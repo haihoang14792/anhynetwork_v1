@@ -1133,25 +1133,72 @@ export default function App() {
     return `https://www.youtube.com/embed/${trimmed}?autoplay=1&rel=0`;
   };
 
+  // Helper to extract YouTube video ID for fetching thumbnails
+  const getYoutubeVideoId = (urlOrId: string): string | null => {
+    if (!urlOrId) return null;
+    const trimmed = urlOrId.trim();
+    if (/^[a-zA-Z0-9_-]{11}$/.test(trimmed)) {
+      return trimmed;
+    }
+    try {
+      const url = new URL(trimmed);
+      if (url.hostname === 'youtu.be') {
+        const id = url.pathname.substring(1).split('&')[0].split('?')[0];
+        if (id && id.length === 11) return id;
+      }
+      if (url.hostname.includes('youtube.com')) {
+        const v = url.searchParams.get('v');
+        if (v && v.length === 11) return v;
+        const parts = url.pathname.split('/');
+        for (const word of ['shorts', 'live', 'embed', 'v']) {
+          const idx = parts.indexOf(word);
+          if (idx !== -1 && parts[idx + 1]) {
+            const id = parts[idx + 1].split('?')[0].split('&')[0];
+            if (id && id.length === 11) return id;
+          }
+        }
+      }
+    } catch (e) {}
+    const regExp = /^.*(?:youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=|shorts\/|live\/)([^#\&\?]*).*/;
+    const match = trimmed.match(regExp);
+    if (match && match[1]) {
+      const id = match[1].trim();
+      if (id.length === 11) return id;
+    }
+    const last11Match = trimmed.match(/[a-zA-Z0-9_-]{11}/g);
+    if (last11Match && last11Match.length > 0) {
+      const lastId = last11Match[last11Match.length - 1];
+      if (lastId.length === 11) return lastId;
+    }
+    return null;
+  };
+
   // Calculate aggregated subscribers
   const totalSubscribersFormatted = useMemo(() => {
-    let totalK = 0;
+    let total = 0;
     channels.forEach(ch => {
-      const numStr = ch.subscribers.toUpperCase().replace('M', '000').replace('K', '').replace('+', '');
-      const parsed = parseFloat(numStr);
+      const clean = ch.subscribers.trim().toUpperCase().replace('+', '');
+      const parsed = parseFloat(clean);
       if (!isNaN(parsed)) {
-        if (ch.subscribers.toUpperCase().includes('M')) {
-          totalK += parsed;
+        if (clean.includes('M')) {
+          total += parsed * 1000000;
+        } else if (clean.includes('K')) {
+          total += parsed * 1000;
         } else {
-          totalK += parsed;
+          total += parsed;
         }
       }
     });
 
-    if (totalK >= 1000) {
-      return (totalK / 1000).toFixed(1) + 'M+';
+    if (total >= 1000000) {
+      const val = total / 1000000;
+      return (val % 1 === 0 ? val.toFixed(0) : val.toFixed(1)) + 'M+';
     }
-    return totalK + 'K+';
+    if (total >= 1000) {
+      const val = total / 1000;
+      return (val % 1 === 0 ? val.toFixed(0) : val.toFixed(1)) + 'K+';
+    }
+    return total.toString();
   }, [channels]);
 
   // Statistics specific to the view
@@ -1683,7 +1730,22 @@ export default function App() {
                 <>
                   <div className={`absolute inset-0 bg-gradient-to-t from-black/95 via-black/50 to-black/20 z-10 transition-opacity duration-500`}></div>
                   {/* Decorative background visual themed around active video */}
-                  <div className={`absolute inset-0 bg-gradient-to-br ${activeVideo?.thumbnailGradient || 'from-slate-950 via-indigo-950/40 to-slate-950'} opacity-80 mix-blend-color-dodge transition-all duration-700 group-hover:scale-105`}></div>
+                  {activeVideo && getYoutubeVideoId(activeVideo.url) ? (
+                    <img 
+                      src={`https://img.youtube.com/vi/${getYoutubeVideoId(activeVideo.url)}/maxresdefault.jpg`}
+                      alt={activeVideo.title}
+                      className="absolute inset-0 w-full h-full object-cover opacity-60 transition-all duration-700 group-hover:scale-105 group-hover:opacity-85"
+                      onError={(e) => {
+                        const target = e.currentTarget as HTMLImageElement;
+                        if (activeVideo && !target.src.includes('hqdefault.jpg')) {
+                          target.src = `https://img.youtube.com/vi/${getYoutubeVideoId(activeVideo.url)}/hqdefault.jpg`;
+                        }
+                      }}
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <div className={`absolute inset-0 bg-gradient-to-br ${activeVideo?.thumbnailGradient || 'from-slate-950 via-indigo-950/40 to-slate-950'} opacity-80 mix-blend-color-dodge transition-all duration-700 group-hover:scale-105`}></div>
+                  )}
                   
                   {/* Visual Soundwaves to simulate audio/activity beautifully */}
                   <div className="absolute right-8 top-16 flex items-end gap-1 h-12 opacity-30 z-20">
@@ -1927,38 +1989,53 @@ export default function App() {
                 </div>
 
                 {/* Video clips catalogue blocks for this selected channel */}
-                {filteredVideos.slice(0, 2).map((vid) => (
-                  <div
-                    key={vid.id}
-                    onClick={() => {
-                      setActiveVideoId(vid.id);
-                      setIsPlaying(true);
-                    }}
-                    className={`col-span-12 md:col-span-4 row-span-2 bg-slate-900 rounded-3xl border p-5 flex flex-col justify-between group cursor-pointer hover:bg-slate-850 transition-all duration-300 shadow-lg ${activeVideoId === vid.id ? 'border-red-600 ring-2 ring-red-600/30' : 'border-slate-800'}`}
-                  >
-                    <div className="flex justify-between items-start">
-                      <span className="px-2 py-0.5 bg-slate-950 text-slate-400 rounded text-[9px] font-bold tracking-wider uppercase">
-                        {vid.quality}
-                      </span>
-                      <span className="text-xs font-bold text-slate-500 flex items-center gap-1">
-                        <Clock className="w-3.5 h-3.5 text-slate-600" />
-                        <span>{vid.duration}</span>
-                      </span>
-                    </div>
+                {filteredVideos.slice(0, 2).map((vid) => {
+                  const ytId = getYoutubeVideoId(vid.url);
+                  return (
+                    <div
+                      key={vid.id}
+                      onClick={() => {
+                        setActiveVideoId(vid.id);
+                        setIsPlaying(true);
+                      }}
+                      className={`col-span-12 md:col-span-4 row-span-2 bg-slate-900 rounded-3xl border p-5 flex flex-col justify-between group cursor-pointer hover:bg-slate-850 transition-all duration-300 shadow-lg ${activeVideoId === vid.id ? 'border-red-600 ring-2 ring-red-600/30' : 'border-slate-800'}`}
+                    >
+                      <div className="flex justify-between items-start mb-3">
+                        <span className="px-2 py-0.5 bg-slate-950 text-slate-400 rounded text-[9px] font-bold tracking-wider uppercase">
+                          {vid.quality}
+                        </span>
+                        <span className="text-xs font-bold text-slate-500 flex items-center gap-1">
+                          <Clock className="w-3.5 h-3.5 text-slate-600" />
+                          <span>{vid.duration}</span>
+                        </span>
+                      </div>
 
-                    <div className="my-2 flex-1">
-                      <h4 className="font-bold text-white text-sm line-clamp-2 group-hover:text-red-400 transition-colors leading-snug">
-                        {vid.title}
-                      </h4>
-                      <p className="text-slate-400 text-[11px] mt-1 line-clamp-1">{vid.views}</p>
-                    </div>
+                      {ytId && (
+                        <div className="w-full aspect-video rounded-xl overflow-hidden mb-3 relative bg-slate-950 border border-slate-800/40">
+                          <img 
+                            src={`https://img.youtube.com/vi/${ytId}/hqdefault.jpg`}
+                            alt={vid.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                            referrerPolicy="no-referrer"
+                          />
+                          <div className="absolute inset-0 bg-black/20 group-hover:bg-black/0 transition-colors"></div>
+                        </div>
+                      )}
 
-                    <div className="flex items-center justify-between text-[10px] font-black tracking-widest text-red-500 pt-2 border-t border-slate-800/60 uppercase">
-                      <span>{activeVideoId === vid.id ? '★ Playing Now' : 'Play Showcase'}</span>
-                      <Play className={`w-3.5 h-3.5 ${activeVideoId === vid.id ? 'fill-current' : ''}`} />
+                      <div className="my-1 flex-1">
+                        <h4 className="font-bold text-white text-sm line-clamp-2 group-hover:text-red-400 transition-colors leading-snug">
+                          {vid.title}
+                        </h4>
+                        <p className="text-slate-400 text-[11px] mt-1 line-clamp-1">{vid.views}</p>
+                      </div>
+
+                      <div className="flex items-center justify-between text-[10px] font-black tracking-widest text-red-500 pt-2 border-t border-slate-800/60 uppercase mt-2">
+                        <span>{activeVideoId === vid.id ? '★ Playing Now' : 'Play Showcase'}</span>
+                        <Play className={`w-3.5 h-3.5 ${activeVideoId === vid.id ? 'fill-current' : ''}`} />
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
 
                 {/* If the channel has less than 2 videos, display placeholders */}
                 {filteredVideos.length <= 1 && (
