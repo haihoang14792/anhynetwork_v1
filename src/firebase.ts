@@ -1,5 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
 import config from '../firebase-applet-config.json';
 
 const firebaseConfig = {
@@ -15,3 +16,4 @@ const app = initializeApp(firebaseConfig);
 
 // Use custom firestore database ID as specified in firebase-applet-config.json
 export const db = getFirestore(app, config.firestoreDatabaseId);
+export const auth = getAuth(app);
