@@ -306,6 +306,14 @@ const TRANSLATIONS = {
     noChannels: 'No channels added yet. Add one in Settings!',
     visitChannel: 'Visit Channel',
     subscribeChannel: 'Subscribe',
+    roleAdmin: '👑 Admin',
+    roleEditor: '✍️ Editor',
+    roleViewer: '👁️ Viewer',
+    roleLabel: 'Role',
+    permissionError: 'Permission Denied! Viewer cannot access the Admin panel.',
+    channelPermissionError: 'Permission Denied! Only Administrators can manage channels.',
+    videoPermissionError: 'Permission Denied! Only Admin or Editor can manage videos.',
+    commentReplyLabel: 'Reply',
   },
   vi: {
     dashboard: 'Tổng Quan',
@@ -381,6 +389,14 @@ const TRANSLATIONS = {
     noChannels: 'Chưa có kênh nào được tạo. Hãy tạo thêm trong mục Cài đặt!',
     visitChannel: 'Truy cập kênh',
     subscribeChannel: 'Đăng ký kênh',
+    roleAdmin: '👑 Admin (Quản trị)',
+    roleEditor: '✍️ Editor (Biên tập)',
+    roleViewer: '👁️ Viewer (Xem)',
+    roleLabel: 'Vai trò',
+    permissionError: 'Không có quyền! Vai trò Người Xem không được phép truy cập Bảng Điều Khiển.',
+    channelPermissionError: 'Không có quyền! Chỉ Admin mới được phép thêm hoặc xóa kênh.',
+    videoPermissionError: 'Không có quyền! Chỉ Admin hoặc Editor mới được thêm hoặc xóa video.',
+    commentReplyLabel: 'Phản hồi',
   }
 };
 
@@ -415,6 +431,37 @@ export default function App() {
   // Modals status
   const [isAdminOpen, setIsAdminOpen] = useState<boolean>(false);
   const [isBookingOpen, setIsBookingOpen] = useState<boolean>(false);
+
+  // User Role State
+  const [userRole, setUserRole] = useState<'admin' | 'editor' | 'viewer'>(() => {
+    return (localStorage.getItem('v_user_role') as 'admin' | 'editor' | 'viewer') || 'admin'; // default to admin initially for easier testing, or we can use viewer
+  });
+
+  // Custom Toast States
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('info');
+
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+    setToastMessage(message);
+    setToastType(type);
+    setTimeout(() => {
+      setToastMessage(null);
+    }, 4000);
+  };
+
+  const checkPermission = (action: 'addChannel' | 'deleteChannel' | 'editChannel' | 'addVideo' | 'editVideo' | 'deleteVideo' | 'manageBookings' | 'resetDefault' | 'manageComments' | 'openAdmin'): boolean => {
+    if (userRole === 'admin') {
+      return true;
+    }
+    if (userRole === 'editor') {
+      if (action === 'openAdmin' || action === 'addVideo' || action === 'editVideo') {
+        return true;
+      }
+      return false;
+    }
+    // viewer has false for all admin operations
+    return false;
+  };
 
   // Form states
   const [bookingForm, setBookingForm] = useState({
@@ -527,14 +574,23 @@ export default function App() {
     return () => unsub();
   }, []);
 
-  const handleUpdateMasterclass = async (field: string, value: string) => {
-    const docRef = doc(db, 'config', 'global');
-    await setDoc(docRef, {
-      masterclassTitleVi: field === 'masterclassTitleVi' ? value : masterclassTitleVi,
-      masterclassSubVi: field === 'masterclassSubVi' ? value : masterclassSubVi,
-      masterclassTitleEn: field === 'masterclassTitleEn' ? value : masterclassTitleEn,
-      masterclassSubEn: field === 'masterclassSubEn' ? value : masterclassSubEn
-    }, { merge: true });
+  const handleSaveMasterclass = async () => {
+    if (userRole !== 'admin') {
+      showToast(language === 'vi' ? 'Không có quyền! Chỉ Admin mới được phép chỉnh sửa cấu hình.' : 'Permission Denied! Only Administrators can edit configurations.', 'error');
+      return;
+    }
+    try {
+      const docRef = doc(db, 'config', 'global');
+      await setDoc(docRef, {
+        masterclassTitleVi,
+        masterclassSubVi,
+        masterclassTitleEn,
+        masterclassSubEn
+      }, { merge: true });
+      showToast(language === 'vi' ? 'Đã lưu cấu hình lớp học thành công!' : 'Saved masterclass settings successfully!', 'success');
+    } catch (err) {
+      showToast(language === 'vi' ? 'Lỗi khi lưu cấu hình!' : 'Error saving configurations!', 'error');
+    }
   };
 
   // Handle active channel change
@@ -701,14 +757,14 @@ export default function App() {
   // Set Reminder Handler
   const handleSetReminder = () => {
     setReminderSet(true);
-    alert(TRANSLATIONS[language].reminderSetMsg);
+    showToast(TRANSLATIONS[language].reminderSetMsg, 'success');
   };
 
   // Submit Call Booking
   const handleBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!bookingForm.fullName || !bookingForm.email) {
-      alert('Please fill out all required fields.');
+      showToast(language === 'vi' ? 'Vui lòng điền đầy đủ các trường bắt buộc.' : 'Please fill out all required fields.', 'error');
       return;
     }
 
@@ -725,6 +781,7 @@ export default function App() {
 
     await setDoc(doc(db, 'bookings', id), newBooking);
     setBookingSuccess(true);
+    showToast(TRANSLATIONS[language].bookingSuccessMsg, 'success');
     setBookingForm({
       fullName: '',
       email: '',
@@ -769,9 +826,55 @@ export default function App() {
     }
   };
 
+  const incrementViewsString = (viewStr: string): string => {
+    const numMatch = viewStr.match(/([\d.,]+)\s*([KkMm]?)/);
+    if (numMatch) {
+      let num = parseFloat(numMatch[1].replace(/,/g, ''));
+      const unit = numMatch[2].toLowerCase();
+      if (unit === 'k') num += 0.1;
+      else if (unit === 'm') num += 0.01;
+      else num += 1;
+      
+      // format nicely to prevent weird decimals
+      const formattedNum = (num % 1 === 0) ? num.toString() : num.toFixed(1);
+      if (unit === 'k') {
+        return `${formattedNum}K ${language === 'vi' ? 'lượt xem' : 'views'}`;
+      } else if (unit === 'm') {
+        return `${formattedNum}M ${language === 'vi' ? 'lượt xem' : 'views'}`;
+      } else {
+        return `${Math.round(num)} ${language === 'vi' ? 'lượt xem' : 'views'}`;
+      }
+    }
+    return `1 ${language === 'vi' ? 'lượt xem' : 'view'}`;
+  };
+
+  const handleIncrementViews = async (videoId: string) => {
+    const vid = videos.find(v => v.id === videoId);
+    if (vid) {
+      const updatedViews = incrementViewsString(vid.views);
+      await updateDoc(doc(db, 'videos', videoId), {
+        views: updatedViews
+      });
+    }
+  };
+
+  const handleLikeVideo = async (videoId: string) => {
+    const vid = videos.find(v => v.id === videoId);
+    if (vid) {
+      await updateDoc(doc(db, 'videos', videoId), {
+        likes: (vid.likes || 0) + 1
+      });
+      showToast(language === 'vi' ? 'Đã thích video thành công!' : 'Liked video successfully!', 'success');
+    }
+  };
+
   // Admin: Save channel modifications
   const handleSaveChannel = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!checkPermission(editingChannel?.id ? 'editChannel' : 'addChannel')) {
+      showToast(TRANSLATIONS[language].channelPermissionError, 'error');
+      return;
+    }
     if (!editingChannel || !editingChannel.name) return;
 
     if (editingChannel.id) {
@@ -804,6 +907,10 @@ export default function App() {
   // Admin: Save video modifications
   const handleSaveVideo = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!checkPermission(editingVideo?.id ? 'editVideo' : 'addVideo')) {
+      showToast(TRANSLATIONS[language].videoPermissionError, 'error');
+      return;
+    }
     if (!editingVideo || !editingVideo.title || !editingVideo.channelId) return;
 
     if (editingVideo.id) {
@@ -833,12 +940,16 @@ export default function App() {
 
   // Admin: Delete Channel
   const handleDeleteChannel = async (id: string) => {
+    if (!checkPermission('deleteChannel')) {
+      showToast(TRANSLATIONS[language].channelPermissionError, 'error');
+      return;
+    }
     if (confirm(language === 'vi' ? 'Bạn có chắc chắn muốn xóa kênh này? Tất cả video thuộc kênh cũng sẽ ẩn.' : 'Are you sure you want to delete this channel?')) {
       await deleteDoc(doc(db, 'channels', id));
       // Delete videos belonging to this channel
       const toDelete = videos.filter(v => v.channelId === id);
       for (const v of toDelete) {
-        await deleteDoc(doc(db, 'videos', v.id));
+         await deleteDoc(doc(db, 'videos', v.id));
       }
       if (activeChannelId === id) {
         setActiveChannelId('all');
@@ -848,6 +959,10 @@ export default function App() {
 
   // Admin: Delete Video
   const handleDeleteVideo = async (id: string) => {
+    if (!checkPermission('deleteVideo')) {
+      showToast(TRANSLATIONS[language].videoPermissionError, 'error');
+      return;
+    }
     if (confirm(language === 'vi' ? 'Bạn có chắc chắn muốn xóa video này?' : 'Are you sure you want to delete this video?')) {
       await deleteDoc(doc(db, 'videos', id));
       if (activeVideoId === id) {
@@ -861,12 +976,20 @@ export default function App() {
 
   // Admin: Delete Booking
   const handleDeleteBooking = async (id: string) => {
+    if (userRole !== 'admin') {
+      showToast(language === 'vi' ? 'Không có quyền! Chỉ Admin mới được phép xóa yêu cầu hợp tác.' : 'Permission Denied! Only Administrators can delete proposals.', 'error');
+      return;
+    }
     await deleteDoc(doc(db, 'bookings', id));
   };
 
   // Admin: Save or edit comment
   const handleSaveComment = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (userRole === 'viewer') {
+      showToast(TRANSLATIONS[language].permissionError, 'error');
+      return;
+    }
     if (!editingComment || !editingComment.text || !editingComment.videoId) return;
 
     if (editingComment.id) {
@@ -890,6 +1013,10 @@ export default function App() {
 
   // Admin: Delete comment
   const handleDeleteComment = async (id: string) => {
+    if (userRole === 'viewer') {
+      showToast(TRANSLATIONS[language].permissionError, 'error');
+      return;
+    }
     if (confirm(language === 'vi' ? 'Bạn có chắc chắn muốn xóa bình luận này?' : 'Are you sure you want to delete this comment?')) {
       await deleteDoc(doc(db, 'comments', id));
     }
@@ -897,6 +1024,10 @@ export default function App() {
 
   // Admin: Reset to default mock data
   const handleResetToDefault = async () => {
+    if (userRole !== 'admin') {
+      showToast(language === 'vi' ? 'Không có quyền! Chỉ Admin mới được phép khôi phục mặc định.' : 'Permission Denied! Only Administrators can reset to default.', 'error');
+      return;
+    }
     if (confirm(language === 'vi' ? 'Khôi phục toàn bộ cài đặt về trạng thái ban đầu?' : 'Reset everything to default database template?')) {
       // Clear Firestore collections
       for (const ch of channels) {
@@ -991,9 +1122,41 @@ export default function App() {
               <span>{TRANSLATIONS[language].languageLabel}</span>
             </button>
 
+            {/* Elegant Role Selector Dropdown */}
+            <div className="relative flex items-center bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 gap-1.5 shadow-md">
+              <span className="text-[10px] uppercase tracking-wider text-slate-400 font-extrabold hidden lg:inline">
+                {TRANSLATIONS[language].roleLabel}:
+              </span>
+              <select
+                value={userRole}
+                onChange={(e) => {
+                  const val = e.target.value as 'admin' | 'editor' | 'viewer';
+                  setUserRole(val);
+                  localStorage.setItem('v_user_role', val);
+                  showToast(
+                    language === 'vi' 
+                      ? `Đã chuyển sang vai trò: ${val === 'admin' ? 'Quản Trị Viên' : val === 'editor' ? 'Biên Tập Viên' : 'Người Xem'}`
+                      : `Switched role to: ${val === 'admin' ? 'Admin' : val === 'editor' ? 'Editor' : 'Viewer'}`, 
+                    'info'
+                  );
+                }}
+                className="bg-transparent text-xs font-bold text-slate-200 outline-none pr-1 cursor-pointer focus:ring-0 border-none appearance-none"
+              >
+                <option value="admin" className="bg-slate-950 text-slate-200 font-semibold">{TRANSLATIONS[language].roleAdmin}</option>
+                <option value="editor" className="bg-slate-950 text-slate-200 font-semibold">{TRANSLATIONS[language].roleEditor}</option>
+                <option value="viewer" className="bg-slate-950 text-slate-200 font-semibold">{TRANSLATIONS[language].roleViewer}</option>
+              </select>
+            </div>
+
             {/* Admin toggle */}
             <button
-              onClick={() => setIsAdminOpen(true)}
+              onClick={() => {
+                if (userRole === 'viewer') {
+                  showToast(TRANSLATIONS[language].permissionError, 'error');
+                } else {
+                  setIsAdminOpen(true);
+                }
+              }}
               className="p-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl text-slate-300 hover:text-white transition-all cursor-pointer"
               title="Creator Admin Settings"
             >
@@ -1016,7 +1179,13 @@ export default function App() {
             <Info className="w-12 h-12 text-slate-500 mx-auto mb-3" />
             <p className="text-slate-300 mb-4 font-semibold">{TRANSLATIONS[language].noChannels}</p>
             <button
-              onClick={() => setIsAdminOpen(true)}
+              onClick={() => {
+                if (userRole === 'viewer') {
+                  showToast(TRANSLATIONS[language].permissionError, 'error');
+                } else {
+                  setIsAdminOpen(true);
+                }
+              }}
               className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl"
             >
               + {TRANSLATIONS[language].addChannel}
@@ -1365,7 +1534,7 @@ export default function App() {
                   <p className="text-slate-300 text-xs md:text-sm leading-relaxed">{activeVideo.description}</p>
                   
                   {/* Share/Action row */}
-                  <div className="flex items-center gap-4 pt-2">
+                  <div className="flex flex-wrap items-center gap-3 pt-2">
                     <a
                       href={activeVideo.url}
                       target="_blank"
@@ -1375,6 +1544,23 @@ export default function App() {
                       <ExternalLink className="w-3.5 h-3.5 text-red-500" />
                       <span>Watch on YouTube</span>
                     </a>
+                    <button
+                      onClick={() => handleLikeVideo(activeVideo.id)}
+                      className="px-4 py-2 bg-red-600/10 hover:bg-red-600/20 border border-red-500/20 hover:border-red-500/40 text-red-400 hover:text-red-300 rounded-xl text-xs font-bold inline-flex items-center gap-2 transition-all cursor-pointer"
+                    >
+                      <Heart className="w-3.5 h-3.5 text-red-500 fill-red-500/20" />
+                      <span>{language === 'vi' ? 'Thích Video' : 'Like Video'} ({activeVideo.likes || 0})</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        handleIncrementViews(activeVideo.id);
+                        showToast(language === 'vi' ? 'Đã tăng lượt xem!' : 'Incremented view count!', 'success');
+                      }}
+                      className="px-4 py-2 bg-slate-950 hover:bg-slate-850 border border-slate-800 text-slate-300 hover:text-white rounded-xl text-xs font-bold inline-flex items-center gap-2 transition-all cursor-pointer"
+                    >
+                      <Eye className="w-3.5 h-3.5 text-red-500" />
+                      <span>{language === 'vi' ? 'Tăng lượt xem' : 'Simulate View'} ({activeVideo.views})</span>
+                    </button>
                   </div>
                 </div>
 
@@ -1631,13 +1817,15 @@ export default function App() {
                     <Layers className="w-4 h-4 text-red-500" />
                     <span>{TRANSLATIONS[language].channelSettings}</span>
                   </h4>
-                  <button
-                    onClick={() => setEditingChannel({})}
-                    className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>{TRANSLATIONS[language].addChannel}</span>
-                  </button>
+                  {userRole === 'admin' && (
+                    <button
+                      onClick={() => setEditingChannel({})}
+                      className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>{TRANSLATIONS[language].addChannel}</span>
+                    </button>
+                  )}
                 </div>
 
                 {/* Edit Channel Form Inline */}
@@ -1800,20 +1988,26 @@ export default function App() {
                         <div className="col-span-2"><span className="px-1.5 py-0.5 bg-slate-900 rounded text-[9px] font-semibold text-slate-400 border border-slate-850">{ch.tag}</span></div>
                         <div className="col-span-3 text-emerald-400 font-bold">{ch.growth}</div>
                         <div className="col-span-1 flex justify-center gap-1">
-                          <button
-                            onClick={() => setEditingChannel(ch)}
-                            className="p-1 hover:text-white text-slate-500 transition-colors"
-                            title="Edit"
-                          >
-                            ✏️
-                          </button>
-                          <button
-                            onClick={() => handleDeleteChannel(ch.id)}
-                            className="p-1 text-slate-500 hover:text-red-500 transition-colors"
-                            title="Delete"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          {userRole === 'admin' ? (
+                            <>
+                              <button
+                                onClick={() => setEditingChannel(ch)}
+                                className="p-1 hover:text-white text-slate-500 transition-colors cursor-pointer"
+                                title="Edit"
+                              >
+                                ✏️
+                              </button>
+                              <button
+                                onClick={() => handleDeleteChannel(ch.id)}
+                                className="p-1 text-slate-500 hover:text-red-500 transition-colors cursor-pointer"
+                                title="Delete"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </>
+                          ) : (
+                            <span className="text-xs text-slate-600 select-none" title="Only Admin can manage channels">🔒</span>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -1983,18 +2177,20 @@ export default function App() {
                           <div className="col-span-1 flex justify-center gap-1">
                             <button
                               onClick={() => setEditingVideo(v)}
-                              className="p-1 hover:text-white text-slate-500 transition-colors"
+                              className="p-1 hover:text-white text-slate-500 transition-colors cursor-pointer"
                               title="Edit"
                             >
                               ✏️
                             </button>
-                            <button
-                              onClick={() => handleDeleteVideo(v.id)}
-                              className="p-1 text-slate-500 hover:text-red-500 transition-colors"
-                              title="Delete"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                            {userRole === 'admin' && (
+                              <button
+                                onClick={() => handleDeleteVideo(v.id)}
+                                className="p-1 text-slate-500 hover:text-red-500 transition-colors cursor-pointer"
+                                title="Delete"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
                           </div>
                         </div>
                       );
@@ -2008,70 +2204,81 @@ export default function App() {
                 <h4 className="text-xs font-black tracking-widest text-white uppercase flex items-center gap-1.5">
                   <Video className="w-4 h-4 text-red-500" />
                   <span>Cấu hình Lớp Học Chiến Lược / Masterclass Settings</span>
+                  {userRole !== 'admin' && (
+                    <span className="px-1.5 py-0.5 bg-slate-900 text-[9px] text-slate-500 rounded border border-slate-800">🔒 Admin Only</span>
+                  )}
                 </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Vietnamese translation */}
-                  <div className="space-y-3">
-                    <span className="text-[10px] font-extrabold text-red-400 uppercase tracking-wider block border-b border-slate-900 pb-1">Phiên bản Tiếng Việt</span>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">Tiêu đề lớp học (Mặc định: Lớp Học Chiến Lược Cuối Tuần)</label>
-                      <input
-                        type="text"
-                        value={masterclassTitleVi}
-                        onChange={(e) => {
-                          setMasterclassTitleVi(e.target.value);
-                          handleUpdateMasterclass('masterclassTitleVi', e.target.value);
-                        }}
-                        placeholder={TRANSLATIONS.vi.masterclassTitle}
-                        className="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-xs text-white"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">Lịch trình / Phụ đề (Mặc định: Chủ Nhật lúc 10:00 AM EST (21:00 VN))</label>
-                      <input
-                        type="text"
-                        value={masterclassSubVi}
-                        onChange={(e) => {
-                          setMasterclassSubVi(e.target.value);
-                          handleUpdateMasterclass('masterclassSubVi', e.target.value);
-                        }}
-                        placeholder={TRANSLATIONS.vi.masterclassSub}
-                        className="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-xs text-white"
-                      />
-                    </div>
+                {userRole !== 'admin' ? (
+                  <div className="p-8 bg-slate-950/20 rounded-2xl border border-slate-900 text-center text-slate-500 space-y-2">
+                    <p className="text-xs font-bold text-slate-400">🔒 {language === 'vi' ? 'Quyền truy cập bị giới hạn' : 'Restricted Access'}</p>
+                    <p className="text-[11px] text-slate-600">{language === 'vi' ? 'Chỉ Quản Trị Viên mới có quyền cấu hình lớp học chiến lược.' : 'Only Administrators have permission to modify masterclass settings.'}</p>
                   </div>
+                ) : (
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Vietnamese translation */}
+                      <div className="space-y-3">
+                        <span className="text-[10px] font-extrabold text-red-400 uppercase tracking-wider block border-b border-slate-900 pb-1">Phiên bản Tiếng Việt</span>
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-slate-500 uppercase">Tiêu đề lớp học (Mặc định: Lớp Học Chiến Lược Cuối Tuần)</label>
+                          <input
+                            type="text"
+                            value={masterclassTitleVi}
+                            onChange={(e) => setMasterclassTitleVi(e.target.value)}
+                            placeholder={TRANSLATIONS.vi.masterclassTitle}
+                            className="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-xs text-white"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-slate-500 uppercase">Lịch trình / Phụ đề (Mặc định: Chủ Nhật lúc 10:00 AM EST (21:00 VN))</label>
+                          <input
+                            type="text"
+                            value={masterclassSubVi}
+                            onChange={(e) => setMasterclassSubVi(e.target.value)}
+                            placeholder={TRANSLATIONS.vi.masterclassSub}
+                            className="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-xs text-white"
+                          />
+                        </div>
+                      </div>
 
-                  {/* English translation */}
-                  <div className="space-y-3">
-                    <span className="text-[10px] font-extrabold text-red-400 uppercase tracking-wider block border-b border-slate-900 pb-1">English Version</span>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">Masterclass Title (Default: Join the Weekend Masterclass)</label>
-                      <input
-                        type="text"
-                        value={masterclassTitleEn}
-                        onChange={(e) => {
-                          setMasterclassTitleEn(e.target.value);
-                          handleUpdateMasterclass('masterclassTitleEn', e.target.value);
-                        }}
-                        placeholder={TRANSLATIONS.en.masterclassTitle}
-                        className="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-xs text-white"
-                      />
+                      {/* English translation */}
+                      <div className="space-y-3">
+                        <span className="text-[10px] font-extrabold text-red-400 uppercase tracking-wider block border-b border-slate-900 pb-1">English Version</span>
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-slate-500 uppercase">Masterclass Title (Default: Join the Weekend Masterclass)</label>
+                          <input
+                            type="text"
+                            value={masterclassTitleEn}
+                            onChange={(e) => setMasterclassTitleEn(e.target.value)}
+                            placeholder={TRANSLATIONS.en.masterclassTitle}
+                            className="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-xs text-white"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-slate-500 uppercase">Schedule / Subtitle (Default: Sundays at 10:00 AM EST)</label>
+                          <input
+                            type="text"
+                            value={masterclassSubEn}
+                            onChange={(e) => setMasterclassSubEn(e.target.value)}
+                            placeholder={TRANSLATIONS.en.masterclassSub}
+                            className="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-xs text-white"
+                          />
+                        </div>
+                      </div>
                     </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">Schedule / Subtitle (Default: Sundays at 10:00 AM EST)</label>
-                      <input
-                        type="text"
-                        value={masterclassSubEn}
-                        onChange={(e) => {
-                          setMasterclassSubEn(e.target.value);
-                          handleUpdateMasterclass('masterclassSubEn', e.target.value);
-                        }}
-                        placeholder={TRANSLATIONS.en.masterclassSub}
-                        className="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-xs text-white"
-                      />
+
+                    <div className="flex justify-end pt-2 border-t border-slate-900">
+                      <button
+                        type="button"
+                        onClick={handleSaveMasterclass}
+                        className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 transition-all shadow-md shadow-red-950/40 cursor-pointer"
+                      >
+                        <Check className="w-4 h-4" />
+                        <span>Lưu cấu hình / Save Settings</span>
+                      </button>
                     </div>
                   </div>
-                </div>
+                )}
               </div>
 
               {/* SECTION C: RECEIVED PROPOSALS (LEADS FOR SPONSORSHIPS) */}
@@ -2079,9 +2286,17 @@ export default function App() {
                 <h4 className="text-xs font-black tracking-widest text-white uppercase flex items-center gap-1.5">
                   <Briefcase className="w-4 h-4 text-red-500" />
                   <span>{TRANSLATIONS[language].receivedBookings} ({bookings.length})</span>
+                  {userRole !== 'admin' && (
+                    <span className="px-1.5 py-0.5 bg-slate-900 text-[9px] text-slate-500 rounded border border-slate-800">🔒 Admin Only</span>
+                  )}
                 </h4>
 
-                {bookings.length === 0 ? (
+                {userRole !== 'admin' ? (
+                  <div className="p-8 bg-slate-950/20 rounded-2xl border border-slate-900 text-center text-slate-500 space-y-2">
+                    <p className="text-xs font-bold text-slate-400">🔒 {language === 'vi' ? 'Quyền truy cập bị giới hạn' : 'Restricted Access'}</p>
+                    <p className="text-[11px] text-slate-600">{language === 'vi' ? 'Chỉ Quản Trị Viên mới có quyền xem các yêu cầu hợp tác tài trợ.' : 'Only Administrators have permission to view collaboration and sponsorship proposals.'}</p>
+                  </div>
+                ) : bookings.length === 0 ? (
                   <div className="p-6 bg-slate-950/40 rounded-2xl border border-dashed border-slate-800 text-center text-slate-500 text-xs">
                     {TRANSLATIONS[language].noBookings}
                   </div>
@@ -2288,19 +2503,21 @@ export default function App() {
                               <button
                                 type="button"
                                 onClick={() => setEditingComment(c)}
-                                className="px-2 py-1 bg-slate-900 hover:bg-slate-850 border border-slate-800 text-slate-400 hover:text-white rounded-lg text-[11px]"
+                                className="px-2 py-1 bg-slate-900 hover:bg-slate-850 border border-slate-800 text-slate-400 hover:text-white rounded-lg text-[11px] cursor-pointer"
                                 title="Edit"
                               >
                                 ✏️
                               </button>
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteComment(c.id)}
-                                className="px-2 py-1 bg-red-950/20 hover:bg-red-950/50 border border-red-900/25 text-red-400 hover:text-red-300 rounded-lg text-[11px]"
-                                title="Delete"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
+                              {userRole === 'admin' && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteComment(c.id)}
+                                  className="px-2 py-1 bg-red-950/20 hover:bg-red-950/50 border border-red-900/25 text-red-400 hover:text-red-300 rounded-lg text-[11px] cursor-pointer"
+                                  title="Delete"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
                             </div>
                           </div>
                         ))}
@@ -2323,6 +2540,20 @@ export default function App() {
             </div>
 
           </div>
+        </div>
+      )}
+
+      {/* Premium Toast Notification */}
+      {toastMessage && (
+        <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3.5 rounded-2xl border backdrop-blur-md shadow-2xl transition-all duration-300 transform translate-y-0 scale-100 ${
+          toastType === 'success' ? 'bg-emerald-950/95 border-emerald-500/30 text-emerald-200' :
+          toastType === 'error' ? 'bg-red-950/95 border-red-500/30 text-red-200' :
+          'bg-slate-950/95 border-slate-800 text-slate-200'
+        }`}>
+          <span className="text-sm">
+            {toastType === 'success' ? '✅' : toastType === 'error' ? '❌' : 'ℹ️'}
+          </span>
+          <p className="text-xs font-semibold leading-relaxed max-w-xs">{toastMessage}</p>
         </div>
       )}
 
