@@ -1,0 +1,104 @@
+{
+  "entities": {
+    "Channel": {
+      "title": "Channel",
+      "description": "YouTube channel in the network",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "emoji": { "type": "string" },
+        "subscribers": { "type": "string" },
+        "growth": { "type": "string" },
+        "views": { "type": "string" },
+        "description": { "type": "string" },
+        "tag": { "type": "string" },
+        "accent": { "type": "string" },
+        "colorClass": { "type": "string" },
+        "channelUrl": { "type": "string" },
+        "subscribeUrl": { "type": "string" }
+      },
+      "required": ["id", "name", "emoji", "subscribers", "growth", "views", "description", "tag", "accent", "colorClass"]
+    },
+    "VideoClip": {
+      "title": "VideoClip",
+      "description": "Featured YouTube video clip in the showcase",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "channelId": { "type": "string" },
+        "title": { "type": "string" },
+        "url": { "type": "string" },
+        "description": { "type": "string" },
+        "duration": { "type": "string" },
+        "quality": { "type": "string" },
+        "views": { "type": "string" },
+        "likes": { "type": "number" },
+        "thumbnailGradient": { "type": "string" }
+      },
+      "required": ["id", "channelId", "title", "url", "description", "duration", "quality", "views", "likes", "thumbnailGradient"]
+    },
+    "Comment": {
+      "title": "Comment",
+      "description": "User comment on a featured video",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "videoId": { "type": "string" },
+        "author": { "type": "string" },
+        "text": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "likes": { "type": "number" }
+      },
+      "required": ["id", "videoId", "author", "text", "timestamp", "likes"]
+    },
+    "Booking": {
+      "title": "Booking",
+      "description": "Collaboration or sponsorship booking request",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "fullName": { "type": "string" },
+        "email": { "type": "string" },
+        "companyName": { "type": "string" },
+        "purpose": { "type": "string" },
+        "message": { "type": "string" },
+        "timestamp": { "type": "string" }
+      },
+      "required": ["id", "fullName", "email", "timestamp"]
+    },
+    "AppConfig": {
+      "title": "AppConfig",
+      "description": "Global masterclass and configuration settings",
+      "type": "object",
+      "properties": {
+        "masterclassTitleVi": { "type": "string" },
+        "masterclassSubVi": { "type": "string" },
+        "masterclassTitleEn": { "type": "string" },
+        "masterclassSubEn": { "type": "string" }
+      }
+    }
+  },
+  "firestore": {
+    "/channels/{channelId}": {
+      "schema": "Channel",
+      "description": "YouTube channels list"
+    },
+    "/videos/{videoId}": {
+      "schema": "VideoClip",
+      "description": "Featured videos show list"
+    },
+    "/comments/{commentId}": {
+      "schema": "Comment",
+      "description": "Comments left on featured videos"
+    },
+    "/bookings/{bookingId}": {
+      "schema": "Booking",
+      "description": "Received partnership booking requests"
+    },
+    "/config/{configId}": {
+      "schema": "AppConfig",
+      "description": "Application settings configurations"
+    }
+  }
+}

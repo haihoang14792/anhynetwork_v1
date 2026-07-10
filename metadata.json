@@ -1,0 +1,6 @@
+{
+  "name": "AnHy Network",
+  "description": "US-standard multi-channel YouTube promotional platform and video player showcase built with Bento Grid theme.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

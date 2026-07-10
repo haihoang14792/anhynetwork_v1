@@ -1,0 +1,17 @@
+import { initializeApp } from 'firebase/app';
+import { getFirestore } from 'firebase/firestore';
+import config from '../firebase-applet-config.json';
+
+const firebaseConfig = {
+  apiKey: config.apiKey,
+  authDomain: config.authDomain,
+  projectId: config.projectId,
+  storageBucket: config.storageBucket,
+  messagingSenderId: config.messagingSenderId,
+  appId: config.appId
+};
+
+const app = initializeApp(firebaseConfig);
+
+// Use custom firestore database ID as specified in firebase-applet-config.json
+export const db = getFirestore(app, config.firestoreDatabaseId);
