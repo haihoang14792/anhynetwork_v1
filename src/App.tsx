@@ -18,7 +18,11 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut,
-  updateProfile
+  updateProfile,
+  sendPasswordResetEmail,
+  updatePassword,
+  reauthenticateWithCredential,
+  EmailAuthProvider
 } from 'firebase/auth';
 import {
   Play,
@@ -47,6 +51,7 @@ import {
   LogIn,
   LogOut,
   UserPlus,
+  User,
   Shield,
   Lock
 } from 'lucide-react';
@@ -320,6 +325,7 @@ const TRANSLATIONS = {
     languageLabel: 'English',
     vietnamese: 'Tiếng Việt',
     english: 'English',
+    portuguese: 'Português',
     playVideoDesc: 'Click the play button to stream the video clip directly inside the bento panel.',
     backLabel: 'Back',
     creatorControl: 'Creator Panel',
@@ -419,6 +425,7 @@ const TRANSLATIONS = {
     languageLabel: 'Tiếng Việt',
     vietnamese: 'Tiếng Việt',
     english: 'English',
+    portuguese: 'Português',
     playVideoDesc: 'Nhấp vào nút play để phát trực tiếp clip video YouTube ngay trên khung hình bento.',
     backLabel: 'Trở lại',
     creatorControl: 'Bảng Điều Khiển Admin',
@@ -449,6 +456,106 @@ const TRANSLATIONS = {
     usersList: 'Quản Lý Người Dùng & Phân Quyền',
     userRoleChanged: 'Đã chuyển vai trò người dùng sang',
     adminOnly: 'Chỉ dành cho Admin'
+  },
+  pt: {
+    dashboard: 'Painel',
+    myChannels: 'Meus Canais',
+    collaborations: 'Colaborações',
+    contact: 'Contato',
+    bookACall: 'MARCAR UMA CHAMADA',
+    latestDrop: 'Destaques',
+    totalSubscribers: 'Total de Inscritos',
+    growthThisMonth: 'CRESCIMENTO ESTE MÊS',
+    liveStreaming: 'MASTERCLASS AO VIVO',
+    masterclassTitle: 'Participe da Masterclass de Fim de Semana',
+    masterclassSub: 'Domingos às 10:00 AM EST (21:00 VN)',
+    setReminder: 'Definir Lembrete',
+    reminderActive: 'Lembrete Ativo!',
+    allChannels: 'Rede de Todos os Canais',
+    viewAll: 'Voltar para Todos',
+    subscribers: 'Inscritos',
+    views: 'Visualizações',
+    watchNow: 'Reproduzir Vídeo',
+    comments: 'Discussão da Comunidade',
+    writeComment: 'Adicionar um comentário público...',
+    send: 'Postar',
+    addChannel: 'Criar Canal',
+    editChannel: 'Editar Canal',
+    creatorAdmin: 'Centro de Controle',
+    settings: 'Admin',
+    bookingFormTitle: 'Agende um Patrocínio ou Colaboração',
+    bookingSubtitle: 'Envie sua proposta para integrar sua marca ou agendar uma sessão de vídeo colaborativa no YouTube.',
+    fullName: 'Seu Nome Completo',
+    emailAddress: 'E-mail de Contato',
+    companyName: 'Nome da Empresa ou Canal',
+    purpose: 'Objetivo da Parceria',
+    selectPurpose: 'Selecione uma opção',
+    sponsorship: 'Patrocínio de Marca',
+    collab: 'Colaboração de Vídeo',
+    consultation: 'Consultoria de Estratégia de Canal',
+    message: 'Proposta e Detalhes do Orçamento',
+    submitBooking: 'Enviar Proposta',
+    bookingSuccessMsg: 'Sua proposta foi salva com sucesso! Entraremos em contato.',
+    close: 'Fechar',
+    adminPanelTitle: 'Configurações da AnHy Network',
+    adminPanelSub: 'Configure as métricas da sua AnHy Network, canais personalizados, vídeos em destaque e visualize propostas de patrocinadores.',
+    channelSettings: 'Lista de Canais',
+    videoSettings: 'Lista de Vídeos',
+    receivedBookings: 'Propostas Recebidas',
+    noBookings: 'Nenhuma proposta recebida ainda. Teste enviando o formulário "Marcar uma Chamada"!',
+    addVideo: 'Adicionar Vídeo em Destaque',
+    videoUrl: 'Link do YouTube ou ID do Vídeo',
+    videoTitle: 'Título do Vídeo',
+    videoDesc: 'Descrição',
+    videoDuration: 'Duração (ex: 14:15)',
+    videoQuality: 'Qualidade (ex: 4K, 1080p)',
+    delete: 'Excluir',
+    cancel: 'Cancelar',
+    saveChanges: 'Salvar Alterações',
+    backToDashboard: 'Voltar ao Painel',
+    resetToDefault: 'Redefinir para Padrões de Fábrica',
+    statsOverview: 'Estatísticas Globais do Criador',
+    activeVideos: 'Catálogo de Vídeos em Destaque',
+    noVideos: 'Nenhum vídeo disponível para este canal.',
+    enterYourName: 'Seu Apelido',
+    likesCount: 'Curtidas',
+    justNow: 'Agora mesmo',
+    reminderSetMsg: 'Lembrete da Masterclass registrado! Nós o notificaremos.',
+    growthText: 'crescimento orgânico da rede',
+    languageLabel: 'Português',
+    vietnamese: 'Tiếng Việt',
+    english: 'English',
+    portuguese: 'Português',
+    playVideoDesc: 'Clique no botão de reprodução para transmitir o vídeo diretamente dentro do painel.',
+    backLabel: 'Voltar',
+    creatorControl: 'Painel do Criador',
+    noChannels: 'Nenhum canal adicionado ainda. Adicione um nas Configurações!',
+    visitChannel: 'Visitar Canal',
+    subscribeChannel: 'Inscrever-se',
+    roleAdmin: '👑 Admin',
+    roleEditor: '✍️ Editor',
+    roleViewer: '👁️ Espectador',
+    roleLabel: 'Função',
+    permissionError: 'Permissão Negada! O espectador não pode acessar o painel Admin.',
+    channelPermissionError: 'Permissão Negada! Apenas Administradores podem gerenciar canais.',
+    videoPermissionError: 'Permissão Negada! Apenas Admin ou Editor podem gerenciar vídeos.',
+    commentReplyLabel: 'Responder',
+    login: 'Entrar',
+    register: 'Inscrever-se',
+    logout: 'Sair',
+    email: 'Nome de usuário',
+    password: 'Senha',
+    name: 'Nome de exibição',
+    userManagement: 'Gerenciamento de Usuários',
+    switchRole: 'Definir Função',
+    noUsers: 'Nenhum usuário encontrado.',
+    updateRoleSuccess: 'Função do usuário atualizada com sucesso!',
+    loginSuccess: 'Login realizado com sucesso!',
+    logoutSuccess: 'Logout realizado com sucesso!',
+    registerSuccess: 'Registrado com sucesso! Bem-vindo à rede.',
+    usersList: 'Gerenciamento de Usuários e Funções',
+    userRoleChanged: 'Função do usuário atualizada para',
+    adminOnly: 'Apenas Administradores'
   }
 };
 
@@ -461,7 +568,7 @@ export default function App() {
 
   const [activeChannelId, setActiveChannelId] = useState<string>('all');
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
-  const [language, setLanguage] = useState<'en' | 'vi'>('vi');
+  const [language, setLanguage] = useState<'en' | 'vi' | 'pt'>('vi');
   const [reminderSet, setReminderSet] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'info' | 'comments'>('info');
 
@@ -483,9 +590,13 @@ export default function App() {
   // Modals status
   const [isAdminOpen, setIsAdminOpen] = useState<boolean>(false);
   const [isBookingOpen, setIsBookingOpen] = useState<boolean>(false);
+  const [isFullVideoListOpen, setIsFullVideoListOpen] = useState<boolean>(false);
 
   // User Authentication & Profile States
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [newDisplayName, setNewDisplayName] = useState<string>('');
+  const [oldPassword, setOldPassword] = useState<string>('');
+  const [newPassword, setNewPassword] = useState<string>('');
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [allUsersList, setAllUsersList] = useState<UserProfile[]>([]);
   const [isAuthOpen, setIsAuthOpen] = useState<boolean>(false);
@@ -564,19 +675,34 @@ export default function App() {
     }
 
     const unsubscribe = auth.onAuthStateChanged((user) => {
-      if (localStorage.getItem('v_user_profile')) return; // Prioritize virtual session if active
-
       setCurrentUser(user);
       if (user) {
+        console.log("Authenticated user:", user.email, "UID:", user.uid);
         const userDocRef = doc(db, 'users', user.uid);
         const unsubProfile = onSnapshot(userDocRef, async (docSnap) => {
           if (docSnap.exists()) {
             const profile = docSnap.data() as UserProfile;
-            setUserProfile(profile);
-            setUserRole(profile.role);
+            // Override role if admin email
+            console.log("Checking admin role for:", user.email, "current role:", profile.role);
+            const email = user.email?.toLowerCase() || '';
+            let finalProfile = { ...profile };
+            if (email === 'hoangnamkz1992@gmail.com' || email.startsWith('admin')) {
+              if (profile.role !== 'admin') {
+                console.log("Updating role to admin for:", user.email);
+                finalProfile.role = 'admin';
+                try {
+                  await updateDoc(userDocRef, { role: 'admin' });
+                } catch (e) {
+                  console.error("Failed to update user role to admin:", e);
+                }
+              }
+            }
+            setUserProfile(finalProfile);
+            setUserRole(finalProfile.role);
           } else {
             let initialRole: 'admin' | 'editor' | 'viewer' = 'viewer';
-            if (user.email === 'hoangnamkz1992@gmail.com' || user.email?.startsWith('admin')) {
+            const email = user.email?.toLowerCase() || '';
+            if (email === 'hoangnamkz1992@gmail.com' || email.startsWith('admin')) {
               initialRole = 'admin';
             }
             const newProfile: UserProfile = {
@@ -650,126 +776,76 @@ export default function App() {
     }
   };
 
+  const handleForgotPassword = async () => {
+    if (!authEmail) {
+      showToast(language === 'vi' ? 'Vui lòng nhập email của bạn!' : 'Please enter your email!', 'error');
+      return;
+    }
+    try {
+      await sendPasswordResetEmail(auth, authEmail);
+      showToast(language === 'vi' ? 'Đã gửi email đặt lại mật khẩu!' : 'Password reset email sent!', 'success');
+    } catch (err: any) {
+      console.error(err);
+      showToast(language === 'vi' ? 'Lỗi gửi email đặt lại mật khẩu!' : 'Error sending reset email!', 'error');
+    }
+  };
+
+  const handleUpdateProfile = async () => {
+    if (!currentUser) return;
+    try {
+      await updateProfile(currentUser, { displayName: newDisplayName });
+      showToast(language === 'vi' ? 'Cập nhật tên thành công!' : 'Profile updated!', 'success');
+    } catch (err: any) {
+      console.error(err);
+      showToast(language === 'vi' ? 'Lỗi cập nhật tên!' : 'Error updating profile!', 'error');
+    }
+  };
+
+  const handleUpdatePassword = async () => {
+    if (!currentUser || !currentUser.email) {
+      showToast(language === 'vi' ? 'Bạn chưa đăng nhập!' : 'Not logged in!', 'error');
+      return;
+    }
+    if (newPassword.length < 6) {
+      showToast(language === 'vi' ? 'Mật khẩu phải có ít nhất 6 ký tự!' : 'Password must be at least 6 characters!', 'error');
+      return;
+    }
+    if (!oldPassword) {
+      showToast(language === 'vi' ? 'Vui lòng nhập mật khẩu cũ!' : 'Please enter your old password!', 'error');
+      return;
+    }
+    try {
+      const credential = EmailAuthProvider.credential(currentUser.email, oldPassword);
+      await reauthenticateWithCredential(currentUser, credential);
+      await updatePassword(currentUser, newPassword);
+      showToast(language === 'vi' ? 'Cập nhật mật khẩu thành công!' : 'Password updated!', 'success');
+      setNewPassword('');
+      setOldPassword('');
+    } catch (err: any) {
+      console.error("Password update error details:", err);
+      showToast(language === 'vi' ? `Lỗi: ${err.message}` : `Error: ${err.message}`, 'error');
+    }
+  };
+
   const handleAuthSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     let email = authEmail.trim();
     let password = authPassword.trim();
 
-    // If no '@', treat as username and auto-assign virtual email
     if (email && !email.includes('@')) {
       email = email.toLowerCase() + '@anhy.network';
     }
 
-    if (password === 'admin') {
-      password = 'adminadmin'; // Firebase Auth requires at least 6 characters
-    }
-
     if (!email || !password) return;
     try {
-      try {
-        await signInWithEmailAndPassword(auth, email, password);
-      } catch (signInErr: any) {
-        // If Firebase Auth Email/Password is disabled or fails due to network/configuration, use local virtual session
-        if (signInErr.code === 'auth/operation-not-allowed' || signInErr.message?.includes('operation-not-allowed')) {
-          console.warn("Firebase Auth Email/Password is disabled. Using local fallback.");
-          const virtualUid = "virtual_" + email.split('@')[0];
-          const isVirtualAdmin = email.startsWith('admin') || email.includes('hoangnam');
-          const virtualProfile: UserProfile = {
-            uid: virtualUid,
-            email: email,
-            displayName: email.split('@')[0].toUpperCase(),
-            role: isVirtualAdmin ? 'admin' : 'viewer',
-            createdAt: new Date().toISOString()
-          };
-          setCurrentUser({
-            uid: virtualUid,
-            email: email,
-            displayName: virtualProfile.displayName
-          });
-          setUserProfile(virtualProfile);
-          setUserRole(virtualProfile.role);
-          localStorage.setItem('v_user_profile', JSON.stringify(virtualProfile));
-          
-          showToast(
-            language === 'vi' 
-              ? 'Đăng nhập thành công! (Chế độ cục bộ)' 
-              : 'Logged in successfully! (Local session)', 
-            'success'
-          );
-          setIsAuthOpen(false);
-          setAuthPassword('');
-          setAuthEmail('');
-          return;
-        }
-
-        // If the admin user doesn't exist yet, auto-create it on-the-fly!
-        if (
-          (email === 'admin@anhy.network') &&
-          (signInErr.code === 'auth/user-not-found' || signInErr.code === 'auth/invalid-credential')
-        ) {
-          const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-          const user = userCredential.user;
-          await updateProfile(user, { displayName: 'Admin' });
-          const newProfile: UserProfile = {
-            uid: user.uid,
-            email: user.email || '',
-            displayName: 'Admin',
-            role: 'admin',
-            createdAt: new Date().toISOString()
-          };
-          await setDoc(doc(db, 'users', user.uid), newProfile);
-        } else {
-          throw signInErr;
-        }
-      }
+      await signInWithEmailAndPassword(auth, email, password);
       showToast(language === 'vi' ? 'Đăng nhập thành công!' : 'Logged in successfully!', 'success');
       setIsAuthOpen(false);
       setAuthPassword('');
       setAuthEmail('');
     } catch (err: any) {
-      console.error(err);
-
-      // Local fallback for general credential/configuration issues to ensure perfect testing
-      if (err.code === 'auth/operation-not-allowed' || err.message?.includes('operation-not-allowed')) {
-        const virtualUid = "virtual_" + email.split('@')[0];
-        const isVirtualAdmin = email.startsWith('admin') || email.includes('hoangnam');
-        const virtualProfile: UserProfile = {
-          uid: virtualUid,
-          email: email,
-          displayName: email.split('@')[0].toUpperCase(),
-          role: isVirtualAdmin ? 'admin' : 'viewer',
-          createdAt: new Date().toISOString()
-        };
-        setCurrentUser({
-          uid: virtualUid,
-          email: email,
-          displayName: virtualProfile.displayName
-        });
-        setUserProfile(virtualProfile);
-        setUserRole(virtualProfile.role);
-        localStorage.setItem('v_user_profile', JSON.stringify(virtualProfile));
-        
-        showToast(
-          language === 'vi' 
-            ? 'Đăng nhập thành công! (Chế độ cục bộ)' 
-            : 'Logged in successfully! (Local session)', 
-          'success'
-        );
-        setIsAuthOpen(false);
-        setAuthPassword('');
-        setAuthEmail('');
-        return;
-      }
-
-      let errMsg = language === 'vi' ? 'Sai tài khoản hoặc mật khẩu!' : 'Invalid email or password!';
-      if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
-        errMsg = language === 'vi' ? 'Tài khoản không tồn tại hoặc thông tin đăng nhập sai!' : 'User not found or invalid credentials!';
-      } else if (err.code === 'auth/wrong-password') {
-        errMsg = language === 'vi' ? 'Sai mật khẩu!' : 'Incorrect password!';
-      } else if (err?.message) {
-        errMsg = err.message;
-      }
-      showToast(errMsg, 'error');
+      console.error("Login failed:", err);
+      showToast(language === 'vi' ? 'Đăng nhập thất bại: ' + err.message : 'Login failed: ' + err.message, 'error');
     }
   };
 
@@ -1622,14 +1698,18 @@ export default function App() {
 
           <div className="flex items-center gap-3">
             {/* Language Switcher */}
-            <button
-              onClick={() => setLanguage(language === 'vi' ? 'en' : 'vi')}
-              className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-xs font-bold tracking-wider text-slate-300 flex items-center gap-1.5 transition-all cursor-pointer"
+            <select
+              value={language}
+              onChange={(e) => setLanguage(e.target.value as 'en' | 'vi' | 'pt')}
+              className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-xs font-bold tracking-wider text-slate-300 transition-all cursor-pointer focus:outline-none"
               title="Change Language"
             >
-              <Globe className="w-3.5 h-3.5 text-red-500" />
-              <span>{TRANSLATIONS[language].languageLabel}</span>
-            </button>
+              {Object.keys(TRANSLATIONS).map((lang) => (
+                <option key={lang} value={lang}>
+                  {TRANSLATIONS[lang as 'en' | 'vi' | 'pt'].languageLabel}
+                </option>
+              ))}
+            </select>
 
             {/* Real Auth Login/Logout widget */}
             {currentUser ? (
@@ -2036,6 +2116,18 @@ export default function App() {
                     </div>
                   );
                 })}
+
+                {filteredVideos.length > 2 && (
+                  <div
+                    onClick={() => setIsFullVideoListOpen(true)}
+                    className="col-span-12 md:col-span-4 row-span-2 bg-slate-900/50 rounded-3xl border border-dashed border-slate-700 p-5 flex flex-col items-center justify-center cursor-pointer hover:bg-slate-800 transition-all duration-300"
+                  >
+                    <div className="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center mb-3">
+                      <span className="text-xl">+{filteredVideos.length - 2}</span>
+                    </div>
+                    <span className="text-xs font-bold text-slate-300">View All Videos</span>
+                  </div>
+                )}
 
                 {/* If the channel has less than 2 videos, display placeholders */}
                 {filteredVideos.length <= 1 && (
@@ -3093,6 +3185,58 @@ export default function App() {
                 </div>
               </div>
 
+              {/* SECTION: USER PROFILE */}
+              <div className="space-y-4 pt-6 border-t border-slate-800">
+                <h4 className="text-xs font-black tracking-widest text-white uppercase flex items-center gap-1.5">
+                  <User className="w-4 h-4 text-red-500" />
+                  <span>{language === 'vi' ? 'Thông tin tài khoản' : 'Account Information'}</span>
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase">{language === 'vi' ? 'Tên hiển thị' : 'Display Name'}</label>
+                    <input
+                      type="text"
+                      value={newDisplayName}
+                      onChange={(e) => setNewDisplayName(e.target.value)}
+                      className="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-xs text-white"
+                      placeholder={currentUser?.displayName || (language === 'vi' ? 'Tên của bạn' : 'Your Name')}
+                    />
+                    <button
+                      onClick={handleUpdateProfile}
+                      className="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-[10px] font-bold transition-all cursor-pointer"
+                    >
+                      {language === 'vi' ? 'Cập nhật tên' : 'Update Name'}
+                    </button>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase">{language === 'vi' ? 'Mật khẩu cũ' : 'Old Password'}</label>
+                    <input
+                      type="password"
+                      value={oldPassword}
+                      onChange={(e) => setOldPassword(e.target.value)}
+                      className="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-xs text-white"
+                      placeholder="******"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase">{language === 'vi' ? 'Mật khẩu mới' : 'New Password'}</label>
+                    <input
+                      type="password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      className="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-xs text-white"
+                      placeholder="******"
+                    />
+                    <button
+                      onClick={handleUpdatePassword}
+                      className="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold transition-all cursor-pointer"
+                    >
+                      {language === 'vi' ? 'Đổi mật khẩu' : 'Update Password'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
               {/* SECTION E: USER & PERMISSION MANAGEMENT */}
               {userRole === 'admin' && (
                 <div className="space-y-4 bg-slate-950/40 p-6 rounded-2xl border border-slate-800">
@@ -3177,6 +3321,56 @@ export default function App() {
               </button>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: FULL VIDEO LIST */}
+      {isFullVideoListOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-4xl p-6 relative shadow-2xl animate-[fadeIn_0.25s_ease]">
+            <button
+              onClick={() => setIsFullVideoListOpen(false)}
+              className="absolute top-4 right-4 p-2 bg-slate-950 hover:bg-slate-850 text-slate-400 hover:text-white rounded-xl border border-slate-800 cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <h2 className="text-xl font-black text-white uppercase tracking-tight mb-6">
+              All Videos
+            </h2>
+
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              {filteredVideos.map((vid) => {
+                const ytId = getYoutubeVideoId(vid.url);
+                return (
+                  <div
+                    key={vid.id}
+                    onClick={() => {
+                      setActiveVideoId(vid.id);
+                      setIsPlaying(true);
+                      setIsFullVideoListOpen(false);
+                    }}
+                    className="bg-slate-950 rounded-2xl p-3 border border-slate-800 cursor-pointer hover:border-red-500/50 transition-all hover:shadow-lg group"
+                  >
+                    {ytId && (
+                      <div className="w-full aspect-video rounded-lg overflow-hidden mb-2">
+                        <img 
+                          src={`https://img.youtube.com/vi/${ytId}/mqdefault.jpg`}
+                          alt={vid.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                          referrerPolicy="no-referrer"
+                        />
+                      </div>
+                    )}
+                    <h4 className="font-bold text-white text-xs line-clamp-2 leading-snug group-hover:text-red-400 transition-colors">
+                      {vid.title}
+                    </h4>
+                    <p className="text-slate-500 text-[10px] mt-1">{vid.views}</p>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       )}
@@ -3272,6 +3466,15 @@ export default function App() {
                   ? (language === 'vi' ? 'Chưa có tài khoản? Đăng ký ngay' : "Don't have an account? Sign Up")
                   : (language === 'vi' ? 'Đã có tài khoản? Đăng nhập' : 'Already have an account? Log In')}
               </button>
+              {authMode === 'login' && (
+                <button
+                  type="button"
+                  onClick={handleForgotPassword}
+                  className="block w-full mt-2 text-[10px] text-slate-500 hover:text-slate-300 transition-colors font-medium cursor-pointer"
+                >
+                  {language === 'vi' ? 'Quên mật khẩu?' : 'Forgot password?'}
+                </button>
+              )}
             </div>
           </div>
         </div>
