@@ -12,7 +12,8 @@ import {
   setDoc, 
   deleteDoc, 
   updateDoc,
-  getDoc
+  getDoc,
+  increment
 } from 'firebase/firestore';
 import {
   signInWithEmailAndPassword,
@@ -431,11 +432,17 @@ export default function App() {
   const [reminderSet, setReminderSet] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'info' | 'comments'>('info');
 
-  // Custom Masterclass configurations
+  // Custom Masterclass and Banking configurations
   const [masterclassTitleVi, setMasterclassTitleVi] = useState<string>('');
   const [masterclassSubVi, setMasterclassSubVi] = useState<string>('');
   const [masterclassTitleEn, setMasterclassTitleEn] = useState<string>('');
   const [masterclassSubEn, setMasterclassSubEn] = useState<string>('');
+  const [bankName, setBankName] = useState<string>('');
+  const [bankAccount, setBankAccount] = useState<string>('');
+  const [accountOwner, setAccountOwner] = useState<string>('');
+  const [bankCode, setBankCode] = useState<string>('');
+  const [qrCodeBase64, setQrCodeBase64] = useState<string>('');
+  const [totalViews, setTotalViews] = useState<number>(0);
 
   // New item creators state
   const [editingChannel, setEditingChannel] = useState<Partial<Channel> | null>(null);
@@ -450,6 +457,7 @@ export default function App() {
   const [isAdminOpen, setIsAdminOpen] = useState<boolean>(false);
   const [isBookingOpen, setIsBookingOpen] = useState<boolean>(false);
   const [isFullVideoListOpen, setIsFullVideoListOpen] = useState<boolean>(false);
+  const [isQRModalOpen, setIsQRModalOpen] = useState<boolean>(false);
 
   // User Authentication & Profile States
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -912,7 +920,7 @@ export default function App() {
     return () => unsub();
   }, []);
 
-  // Synchronize masterclass config with Firestore
+  // Synchronize masterclass config and bank info with Firestore
   useEffect(() => {
     const unsub = onSnapshot(doc(db, 'config', 'global'), (docSnap) => {
       if (docSnap.exists()) {
@@ -921,16 +929,48 @@ export default function App() {
         setMasterclassSubVi(data.masterclassSubVi || '');
         setMasterclassTitleEn(data.masterclassTitleEn || '');
         setMasterclassSubEn(data.masterclassSubEn || '');
+        setBankName(data.bankName || '');
+        setBankAccount(data.bankAccount || '');
+        setAccountOwner(data.accountOwner || '');
+        setBankCode(data.bankCode || '');
+        setQrCodeBase64(data.qrCodeBase64 || '');
       } else {
         setDoc(doc(db, 'config', 'global'), {
           masterclassTitleVi: '',
           masterclassSubVi: '',
           masterclassTitleEn: '',
-          masterclassSubEn: ''
+          masterclassSubEn: '',
+          bankName: '',
+          bankAccount: '',
+          accountOwner: '',
+          bankCode: '',
+          qrCodeBase64: ''
         });
       }
     });
     return () => unsub();
+  }, []);
+
+  // Synchronize stats with Firestore
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, 'stats', 'global'), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setTotalViews(data.totalViews || 0);
+      } else {
+        setDoc(doc(db, 'stats', 'global'), {
+          totalViews: 1
+        });
+      }
+    });
+    return () => unsub();
+  }, []);
+
+  // Increment view count on mount
+  useEffect(() => {
+    updateDoc(doc(db, 'stats', 'global'), {
+      totalViews: increment(1)
+    });
   }, []);
 
   const handleSaveMasterclass = async () => {
@@ -949,6 +989,37 @@ export default function App() {
       showToast(language === 'vi' ? 'Đã lưu cấu hình lớp học thành công!' : 'Saved masterclass settings successfully!', 'success');
     } catch (err) {
       showToast(language === 'vi' ? 'Lỗi khi lưu cấu hình!' : 'Error saving configurations!', 'error');
+    }
+  };
+
+  const handleSaveBankingInfo = async () => {
+    if (userRole !== 'admin') {
+      showToast(language === 'vi' ? 'Không có quyền! Chỉ Admin mới được phép chỉnh sửa cấu hình.' : 'Permission Denied! Only Administrators can edit configurations.', 'error');
+      return;
+    }
+    try {
+      const docRef = doc(db, 'config', 'global');
+      await setDoc(docRef, {
+        bankName,
+        bankAccount,
+        accountOwner,
+        bankCode,
+        qrCodeBase64
+      }, { merge: true });
+      showToast(language === 'vi' ? 'Đã lưu thông tin ngân hàng!' : 'Banking info saved!', 'success');
+    } catch (err) {
+      showToast(language === 'vi' ? 'Lỗi khi lưu cấu hình!' : 'Error saving configurations!', 'error');
+    }
+  };
+
+  const handleQrImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setQrCodeBase64(reader.result as string);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -2137,16 +2208,16 @@ export default function App() {
 
         {/* Footer info (Los Angeles, New York, etc.) */}
         <footer className="mt-8 pt-6 border-t border-slate-900 flex flex-col md:flex-row justify-between items-center gap-4 text-[10px] text-slate-500 font-black tracking-widest uppercase">
-          <div>&copy; {new Date().getFullYear()} ANHY NETWORK GLOBAL. ALL RIGHTS RESERVED.</div>
-          <div className="flex items-center gap-1.5 bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800 text-slate-400">
-            <Sparkles className="w-3.5 h-3.5 text-red-500 animate-pulse" />
-            <span>Empowering Global Voices & Creative Engineering</span>
+          <div className="flex gap-4">
+            <span>Views: {totalViews}</span>
+            <span>Online: {Math.floor(Math.random() * 5) + 1}</span>
           </div>
-          <div className="flex gap-6">
-            <span className="hover:text-red-500 transition-colors">LOS ANGELES</span>
-            <span className="hover:text-red-500 transition-colors">NEW YORK</span>
-            <span className="hover:text-red-500 transition-colors">HA NOI</span>
-          </div>
+          <button 
+            onClick={() => setIsQRModalOpen(true)}
+            className="px-3 py-1.5 bg-emerald-950/50 hover:bg-emerald-900/50 text-emerald-400 border border-emerald-500/30 rounded-lg transition-all"
+          >
+            {language === 'vi' ? 'Tặng thưởng' : 'Bonus'}
+          </button>
         </footer>
 
       </div>
@@ -2250,6 +2321,35 @@ export default function App() {
         </div>
       )}
 
+      {/* MODAL: DONATION QR CODE */}
+      {isQRModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl relative animate-[fadeIn_0.3s_ease]">
+            <button
+              onClick={() => setIsQRModalOpen(false)}
+              className="absolute top-5 right-5 p-2 bg-slate-950 hover:bg-slate-800 text-slate-400 hover:text-white rounded-xl border border-slate-800/60 transition-all cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+            <div className="p-8 text-center space-y-4">
+              <h3 className="text-lg font-extrabold text-white">{language === 'vi' ? 'Tặng thưởng' : 'Bonus'}</h3>
+              <div className="bg-white p-2 rounded-xl">
+                 {qrCodeBase64 ? (
+                   <img src={qrCodeBase64} alt="QR Code" className="w-full h-auto" />
+                 ) : (
+                   <div className="w-full h-48 bg-slate-800 flex items-center justify-center text-slate-500 text-xs">No QR Code</div>
+                 )}
+              </div>
+              <div className="text-left text-xs text-slate-400 space-y-1">
+                 <p><span className="text-slate-500">Bank:</span> {bankName}</p>
+                 <p><span className="text-slate-500">Account:</span> {bankAccount}</p>
+                 <p><span className="text-slate-500">Owner:</span> {accountOwner}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* MODAL: CREATOR PANEL & SETTINGS CONTROL CENTER */}
       {isAdminOpen && (
         <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
@@ -2301,6 +2401,73 @@ export default function App() {
                   </div>
                 </div>
               )}
+
+              {/* SECTION: BANKING CONFIGURATION */}
+                <div className="space-y-4">
+                  <h4 className="text-xs font-black tracking-widest text-white uppercase flex items-center gap-1.5">
+                    <Shield className="w-4 h-4 text-emerald-500" />
+                    <span>Banking Settings</span>
+                  </h4>
+                  <div className="bg-slate-950 p-5 rounded-2xl border border-emerald-500/30 space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase">Bank Name</label>
+                        <input
+                          type="text"
+                          value={bankName}
+                          onChange={(e) => setBankName(e.target.value)}
+                          className="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-xs text-white"
+                          placeholder="e.g. AGRIBANK"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase">Bank Code (e.g. 970405)</label>
+                        <input
+                          type="text"
+                          value={bankCode}
+                          onChange={(e) => setBankCode(e.target.value)}
+                          className="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-xs text-white"
+                          placeholder="970405"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase">QR Code Image</label>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleQrImageUpload}
+                          className="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-xs text-white"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase">Account Number</label>
+                        <input
+                          type="text"
+                          value={bankAccount}
+                          onChange={(e) => setBankAccount(e.target.value)}
+                          className="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-xs text-white"
+                          placeholder="e.g. 615xxxx778"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase">Account Owner</label>
+                        <input
+                          type="text"
+                          value={accountOwner}
+                          onChange={(e) => setAccountOwner(e.target.value)}
+                          className="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-xs text-white"
+                          placeholder="e.g. TRUONG CAO DANG SAI GON"
+                        />
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleSaveBankingInfo}
+                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-bold transition-all cursor-pointer"
+                    >
+                      Save Banking Info
+                    </button>
+                  </div>
+                </div>
 
               {/* SECTION A: CHANNELS DIRECTORY */}
               <div className="space-y-4">

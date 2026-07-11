@@ -75,7 +75,20 @@
         "masterclassTitleVi": { "type": "string" },
         "masterclassSubVi": { "type": "string" },
         "masterclassTitleEn": { "type": "string" },
-        "masterclassSubEn": { "type": "string" }
+        "masterclassSubEn": { "type": "string" },
+        "bankName": { "type": "string" },
+        "bankAccount": { "type": "string" },
+        "accountOwner": { "type": "string" },
+        "bankCode": { "type": "string" },
+        "qrCodeBase64": { "type": "string" }
+      }
+    },
+    "SiteStats": {
+      "title": "SiteStats",
+      "description": "Statistics about site traffic",
+      "type": "object",
+      "properties": {
+        "totalViews": { "type": "number" }
       }
     }
   },
@@ -99,6 +112,10 @@
     "/config/{configId}": {
       "schema": "AppConfig",
       "description": "Application settings configurations"
+    },
+    "/stats/{statsId}": {
+      "schema": "SiteStats",
+      "description": "Website traffic statistics"
     }
   }
 }
