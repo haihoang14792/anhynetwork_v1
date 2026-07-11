@@ -113,148 +113,7 @@ interface Booking {
 }
 
 // Default initial data
-const DEFAULT_CHANNELS: Channel[] = [
-  {
-    id: 'v-tech',
-    name: 'AnHy Tech & AI',
-    emoji: '🤖',
-    subscribers: '850K',
-    growth: '+18% this month',
-    views: '12.4M',
-    description: 'Khám phá về AI Agents, tự động hóa quy trình phần mềm và công nghệ điện toán tương lai.',
-    tag: 'AI & SOFTWARE',
-    accent: 'indigo',
-    colorClass: 'from-indigo-600 to-indigo-800',
-    channelUrl: 'https://www.youtube.com/@v_tech_ai',
-    subscribeUrl: 'https://www.youtube.com/@v_tech_ai?sub_confirmation=1'
-  },
-  {
-    id: 'v-life',
-    name: 'AnHy Life & Travel',
-    emoji: '🍳',
-    subscribers: '1.2M',
-    growth: '+8% this month',
-    views: '45.1M',
-    description: 'Trải nghiệm ẩm thực đường phố, văn hóa địa phương và những hành trình du lịch đầy cảm hứng.',
-    tag: 'LIFESTYLE & TRAVEL',
-    accent: 'amber',
-    colorClass: 'from-amber-500 to-amber-700',
-    channelUrl: 'https://www.youtube.com/@v_life_travel',
-    subscribeUrl: 'https://www.youtube.com/@v_life_travel?sub_confirmation=1'
-  },
-  {
-    id: 'v-finance',
-    name: 'AnHy Finance',
-    emoji: '💸',
-    subscribers: '420K',
-    growth: '+24% this month',
-    views: '5.8M',
-    description: 'Giải mã quỹ chỉ số, cách quản lý tài chính cá nhân và xây dựng khối tài sản bền vững.',
-    tag: 'WEALTH & FINANCE',
-    accent: 'emerald',
-    colorClass: 'from-emerald-500 to-emerald-700',
-    channelUrl: 'https://www.youtube.com/@v_finance',
-    subscribeUrl: 'https://www.youtube.com/@v_finance?sub_confirmation=1'
-  }
-];
-
-const DEFAULT_VIDEOS: VideoClip[] = [
-  {
-    id: 'vid-1',
-    channelId: 'v-tech',
-    title: 'The Future of AI Architecture in 2026',
-    url: 'https://www.youtube.com/watch?v=Ke90Tje7VS0',
-    description: 'Tìm hiểu cách các hệ thống AI Agent thông minh đang dẫn đầu cuộc cách mạng tiếp theo trong tự động hóa không gian làm việc số và kỹ thuật đám mây.',
-    duration: '12:44',
-    quality: '4K HDR',
-    views: '240K lượt xem',
-    likes: 18420,
-    thumbnailGradient: 'from-slate-950 via-indigo-950/40 to-slate-900'
-  },
-  {
-    id: 'vid-2',
-    channelId: 'v-tech',
-    title: 'React 19 & Next.js 15: Deep Dive Tutorial',
-    url: 'https://www.youtube.com/watch?v=8S0UfX6pYps',
-    description: 'Hướng dẫn toàn diện về Server Actions, useActionState, hook mới và bộ biên dịch React Compiler hoạt động thực tế.',
-    duration: '18:20',
-    quality: '1080p',
-    views: '180K lượt xem',
-    likes: 12510,
-    thumbnailGradient: 'from-slate-950 via-blue-950/40 to-slate-900'
-  },
-  {
-    id: 'vid-3',
-    channelId: 'v-life',
-    title: 'Ultimate Street Food Tour in New York & LA',
-    url: 'https://www.youtube.com/watch?v=F_7OskP_tco',
-    description: 'Hành trình trải nghiệm từ những chiếc xe đồ ăn đường phố nhộn nhịp đến các nhà hàng Michelin ẩn mình ở các thành phố lớn tại Hoa Kỳ.',
-    duration: '24:10',
-    quality: '4K HDR',
-    views: '520K lượt xem',
-    likes: 38240,
-    thumbnailGradient: 'from-slate-950 via-amber-950/40 to-slate-900'
-  },
-  {
-    id: 'vid-4',
-    channelId: 'v-life',
-    title: 'Exploring Secret Hidden Cafes in Saigon',
-    url: 'https://www.youtube.com/watch?v=7h6B6Kq8nQY',
-    description: 'Một chiếc vlog nhẹ nhàng thư giãn về văn hóa cà phê vỉa hè và những góc nhỏ bình yên giữa lòng Sài Gòn nhộn nhịp.',
-    duration: '15:35',
-    quality: '1080p',
-    views: '310K lượt xem',
-    likes: 19450,
-    thumbnailGradient: 'from-slate-950 via-orange-950/40 to-slate-900'
-  },
-  {
-    id: 'vid-5',
-    channelId: 'v-finance',
-    title: 'How to Invest in US Index Funds from Anywhere',
-    url: 'https://www.youtube.com/watch?v=zjkBMFhNj_g',
-    description: 'Phân tích chi tiết dành cho người mới bắt đầu về sức mạnh của lãi kép, các quỹ ETF hàng đầu thế giới và cách tự động hóa đầu tư tài chính.',
-    duration: '11:05',
-    quality: '4K',
-    views: '150K lượt xem',
-    likes: 9280,
-    thumbnailGradient: 'from-slate-950 via-emerald-950/40 to-slate-900'
-  }
-];
-
-const DEFAULT_COMMENTS: Comment[] = [
-  {
-    id: 'c-1',
-    videoId: 'vid-1',
-    author: 'Minh Tuấn Tech',
-    text: 'Bài phân tích siêu chất lượng! Công nghệ AI Agent đúng là tương lai của ngành phần mềm.',
-    timestamp: '2 giờ trước',
-    likes: 84
-  },
-  {
-    id: 'c-2',
-    videoId: 'vid-1',
-    author: 'Sarah Jenkins',
-    text: 'Loved the visual presentation of vertical city twin models. US urban projects are mind-blowing!',
-    timestamp: '5 giờ trước',
-    likes: 142
-  },
-  {
-    id: 'c-3',
-    videoId: 'vid-3',
-    author: 'Lyly Foodie',
-    text: 'Nhìn xe Taco thèm xỉu luôn anh ơi, lần sau review ẩm thực Boston nhé anh!',
-    timestamp: '1 ngày trước',
-    likes: 56
-  },
-  {
-    id: 'c-4',
-    videoId: 'vid-5',
-    author: 'Quốc Bảo',
-    text: 'Thông tin bổ ích và trực quan. Giúp mình có góc nhìn sáng suốt hơn về rủi ro lạm phát.',
-    timestamp: '3 ngày trước',
-    likes: 31
-  }
-];
+// Placeholder for data types
 
 const TRANSLATIONS = {
   en: {
@@ -561,9 +420,9 @@ const TRANSLATIONS = {
 
 export default function App() {
   // State initialization with safe default fallbacks
-  const [channels, setChannels] = useState<Channel[]>(DEFAULT_CHANNELS);
-  const [videos, setVideos] = useState<VideoClip[]>(DEFAULT_VIDEOS);
-  const [comments, setComments] = useState<Comment[]>(DEFAULT_COMMENTS);
+  const [channels, setChannels] = useState<Channel[]>([]);
+  const [videos, setVideos] = useState<VideoClip[]>([]);
+  const [comments, setComments] = useState<Comment[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
 
   const [activeChannelId, setActiveChannelId] = useState<string>('all');
@@ -607,6 +466,7 @@ export default function App() {
 
   // User Role State
   const [userRole, setUserRole] = useState<'admin' | 'editor' | 'viewer'>('viewer');
+  const [isInitializing, setIsInitializing] = useState<boolean>(true);
 
   // Custom Toast States
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -668,13 +528,16 @@ export default function App() {
         });
         setUserProfile(profile);
         setUserRole(profile.role);
+        setIsInitializing(false);
         return;
       } catch (e) {
         console.error("Failed to parse saved virtual user", e);
+        setIsInitializing(false);
       }
     }
 
     const unsubscribe = auth.onAuthStateChanged((user) => {
+      setIsInitializing(true);
       setCurrentUser(user);
       if (user) {
         console.log("Authenticated user:", user.email, "UID:", user.uid);
@@ -699,6 +562,7 @@ export default function App() {
             }
             setUserProfile(finalProfile);
             setUserRole(finalProfile.role);
+            setIsInitializing(false);
           } else {
             let initialRole: 'admin' | 'editor' | 'viewer' = 'viewer';
             const email = user.email?.toLowerCase() || '';
@@ -715,12 +579,14 @@ export default function App() {
             await setDoc(userDocRef, newProfile);
             setUserProfile(newProfile);
             setUserRole(initialRole);
+            setIsInitializing(false);
           }
         });
         return () => unsubProfile();
       } else {
         setUserProfile(null);
         setUserRole('viewer');
+        setIsInitializing(false);
       }
     });
     return () => unsubscribe();
@@ -999,18 +865,11 @@ export default function App() {
   // Synchronize channels with Firestore
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'channels'), (snapshot) => {
-      if (snapshot.empty) {
-        // Seed database if empty so there is always out-of-the-box data
-        DEFAULT_CHANNELS.forEach((ch) => {
-          setDoc(doc(db, 'channels', ch.id), ch);
-        });
-      } else {
         const list: Channel[] = [];
         snapshot.forEach((doc) => {
           list.push(doc.data() as Channel);
         });
         setChannels(list);
-      }
     });
     return () => unsub();
   }, []);
@@ -1018,17 +877,11 @@ export default function App() {
   // Synchronize videos with Firestore
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'videos'), (snapshot) => {
-      if (snapshot.empty) {
-        DEFAULT_VIDEOS.forEach((vid) => {
-          setDoc(doc(db, 'videos', vid.id), vid);
-        });
-      } else {
         const list: VideoClip[] = [];
         snapshot.forEach((doc) => {
           list.push(doc.data() as VideoClip);
         });
         setVideos(list);
-      }
     });
     return () => unsub();
   }, []);
@@ -1036,17 +889,11 @@ export default function App() {
   // Synchronize comments with Firestore
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'comments'), (snapshot) => {
-      if (snapshot.empty) {
-        DEFAULT_COMMENTS.forEach((c) => {
-          setDoc(doc(db, 'comments', c.id), c);
-        });
-      } else {
         const list: Comment[] = [];
         snapshot.forEach((doc) => {
           list.push(doc.data() as Comment);
         });
         setComments(list);
-      }
     });
     return () => unsub();
   }, []);
@@ -1628,17 +1475,6 @@ export default function App() {
         await deleteDoc(doc(db, 'bookings', b.id));
       }
 
-      // Restore defaults to Firestore
-      for (const ch of DEFAULT_CHANNELS) {
-        await setDoc(doc(db, 'channels', ch.id), ch);
-      }
-      for (const v of DEFAULT_VIDEOS) {
-        await setDoc(doc(db, 'videos', v.id), v);
-      }
-      for (const c of DEFAULT_COMMENTS) {
-        await setDoc(doc(db, 'comments', c.id), c);
-      }
-
       await setDoc(doc(db, 'config', 'global'), {
         masterclassTitleVi: '',
         masterclassSubVi: '',
@@ -1647,9 +1483,7 @@ export default function App() {
       });
 
       setActiveChannelId('all');
-      if (DEFAULT_VIDEOS.length > 0) {
-        setActiveVideoId(DEFAULT_VIDEOS[0].id);
-      }
+      setActiveVideoId('');
       setIsAdminOpen(false);
     }
   };
@@ -3479,21 +3313,6 @@ export default function App() {
           </div>
         </div>
       )}
-
-      {/* Premium Toast Notification */}
-      {toastMessage && (
-        <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3.5 rounded-2xl border backdrop-blur-md shadow-2xl transition-all duration-300 transform translate-y-0 scale-100 ${
-          toastType === 'success' ? 'bg-emerald-950/95 border-emerald-500/30 text-emerald-200' :
-          toastType === 'error' ? 'bg-red-950/95 border-red-500/30 text-red-200' :
-          'bg-slate-950/95 border-slate-800 text-slate-200'
-        }`}>
-          <span className="text-sm">
-            {toastType === 'success' ? '✅' : toastType === 'error' ? '❌' : 'ℹ️'}
-          </span>
-          <p className="text-xs font-semibold leading-relaxed max-w-xs">{toastMessage}</p>
-        </div>
-      )}
-
     </div>
   );
 }
