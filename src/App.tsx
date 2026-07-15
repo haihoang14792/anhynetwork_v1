@@ -57,7 +57,8 @@ import {
   ChevronRight,
   Filter,
   SlidersHorizontal,
-  ArrowUpDown
+  ArrowUpDown,
+  Pin
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -100,6 +101,7 @@ interface VideoClip {
   dislikes: number;
   thumbnailGradient: string;
   isLive?: boolean;
+  isPinned?: boolean;
 }
 
 interface Comment {
@@ -355,6 +357,7 @@ const TRANSLATIONS = {
     onlyAdminDelete: "Chỉ Quản trị viên mới được xóa!",
     liveBadge: "TRỰC TIẾP",
     setLiveStream: "Đang phát Trực tiếp (Live Stream)",
+    pinVideo: "Ghim video lên đầu trang (Truy cập đầu tiên)",
     liveBroadcasting: "Kênh đang phát trực tiếp",
     videoSaveSuccess: "Đã lưu video thành công!"
   },
@@ -446,6 +449,7 @@ const TRANSLATIONS = {
     onlyAdminDelete: "Only Administrators can delete!",
     liveBadge: "LIVE",
     setLiveStream: "Live Broadcasting (Live Stream)",
+    pinVideo: "Pin video to top (First visit default)",
     liveBroadcasting: "Channel is broadcasting live",
     videoSaveSuccess: "Video saved successfully!"
   },
@@ -537,6 +541,7 @@ const TRANSLATIONS = {
     onlyAdminDelete: "Apenas administradores podem excluir!",
     liveBadge: "AO VIVO",
     setLiveStream: "Transmissão ao vivo (Live Stream)",
+    pinVideo: "Fixar vídeo no topo (Padrão no primeiro acesso)",
     liveBroadcasting: "Canal está transmitindo ao vivo",
     videoSaveSuccess: "Vídeo salvo com sucesso!"
   },
@@ -628,6 +633,7 @@ const TRANSLATIONS = {
     onlyAdminDelete: "관리자만 삭제할 수 있습니다!",
     liveBadge: "라이브",
     setLiveStream: "라이브 스트리밍 (Live Stream)",
+    pinVideo: "동영상 상단 고정 (첫 방문 기본)",
     liveBroadcasting: "채널이 현재 라이브 방송 중입니다",
     videoSaveSuccess: "동영상이 성공적으로 저장되었습니다!"
   },
@@ -719,6 +725,7 @@ const TRANSLATIONS = {
     onlyAdminDelete: "管理者のみ削除できます！",
     liveBadge: "ライブ",
     setLiveStream: "ライブ配信 (Live Stream)",
+    pinVideo: "動画を上部に固定 (初回アクセス時優先)",
     liveBroadcasting: "チャンネルは現在ライブ配信中です",
     videoSaveSuccess: "動画が正常に保存されました！"
   }
@@ -780,7 +787,13 @@ export default function App() {
   const [activeChannelId, setActiveChannelId] = useState<string>('all');
   const [activeVideoId, setActiveVideoId] = useState<string>(() => {
     const params = new URLSearchParams(window.location.search);
-    return params.get('v') || 'vid-1';
+    let v = params.get('v');
+    if (!v && window.location.hash) {
+      const hash = window.location.hash.substring(1);
+      const hashParams = new URLSearchParams(hash.startsWith('?') ? hash : '?' + hash);
+      v = hashParams.get('v') || hash.split('v=')[1]?.split('&')[0];
+    }
+    return v || '';
   });
   const [searchQuery, setSearchQuery] = useState<string>('');
 
@@ -1040,6 +1053,13 @@ export default function App() {
       result.sort((a, b) => (b.likes || 0) - (a.likes || 0));
     }
 
+    // Always sort pinned videos to the top
+    result.sort((a, b) => {
+      const aPinned = a.isPinned ? 1 : 0;
+      const bPinned = b.isPinned ? 1 : 0;
+      return bPinned - aPinned;
+    });
+
     return result;
   }, [videos, channels, activeChannelId, searchQuery, sidebarSortBy, userRole]);
 
@@ -1134,8 +1154,15 @@ export default function App() {
   const totalAdminVideoPages = Math.ceil(filteredAdminVideos.length / adminVideoPageSize) || 1;
 
   const activeVideo = useMemo(() => {
-    const active = filteredVideos.find(v => v.id === activeVideoId);
-    if (active) return active;
+    if (activeVideoId) {
+      const active = filteredVideos.find(v => v.id === activeVideoId);
+      if (active) return active;
+    }
+    // If activeVideoId is empty or not found in current filteredVideos list, find pinned video in filteredVideos
+    const pinned = filteredVideos.find(v => v.isPinned);
+    if (pinned) return pinned;
+
+    // Fallback to the first video of the filteredVideos list
     if (filteredVideos.length > 0) return filteredVideos[0];
     return videos[0] || null;
   }, [videos, filteredVideos, activeVideoId]);
@@ -1145,27 +1172,56 @@ export default function App() {
     return comments.filter(c => c.videoId === activeVideo.id);
   }, [comments, activeVideo]);
 
-  // Synchronize URL query parameter 'v' with browser history
+  // Synchronize URL query parameter 'v' or hash with browser history
   useEffect(() => {
     if (activeVideoId) {
       const url = new URL(window.location.href);
       url.searchParams.set('v', activeVideoId);
+      url.hash = `v=${activeVideoId}`;
       window.history.replaceState(null, '', url.toString());
     }
   }, [activeVideoId]);
 
-  // Handle browser back/forward buttons (e.g. popstate events)
+  // Handle browser back/forward buttons (popstate and hashchange events)
   useEffect(() => {
-    const handlePopState = () => {
+    const handleNavigationChange = () => {
       const params = new URLSearchParams(window.location.search);
-      const videoParam = params.get('v');
+      let videoParam = params.get('v');
+      if (!videoParam && window.location.hash) {
+        const hash = window.location.hash.substring(1);
+        const hashParams = new URLSearchParams(hash.startsWith('?') ? hash : '?' + hash);
+        videoParam = hashParams.get('v') || hash.split('v=')[1]?.split('&')[0];
+      }
       if (videoParam) {
         setActiveVideoId(videoParam);
       }
     };
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
+    window.addEventListener('popstate', handleNavigationChange);
+    window.addEventListener('hashchange', handleNavigationChange);
+    return () => {
+      window.removeEventListener('popstate', handleNavigationChange);
+      window.removeEventListener('hashchange', handleNavigationChange);
+    };
   }, []);
+
+  // Set default active video id to pinned video if it exists and no URL parameter or hash 'v' is set
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const videoParam = params.get('v');
+    let hashParam = '';
+    if (window.location.hash) {
+      const hash = window.location.hash.substring(1);
+      const hashParams = new URLSearchParams(hash.startsWith('?') ? hash : '?' + hash);
+      hashParam = hashParams.get('v') || hash.split('v=')[1]?.split('&')[0] || '';
+    }
+
+    if (!videoParam && !hashParam && videos.length > 0) {
+      const pinnedVideo = videos.find(v => v.isPinned);
+      if (pinnedVideo && activeVideoId !== pinnedVideo.id) {
+        setActiveVideoId(pinnedVideo.id);
+      }
+    }
+  }, [videos]);
 
   const getShareUrl = (videoId: string) => {
     let origin = window.location.origin;
@@ -1181,9 +1237,7 @@ export default function App() {
       pathname += '/';
     }
     
-    const url = new URL(origin + pathname);
-    url.searchParams.set('v', videoId);
-    return url.toString();
+    return `${origin}${pathname}#v=${videoId}`;
   };
 
   const handleCopyLink = (videoId: string) => {
@@ -1459,9 +1513,17 @@ export default function App() {
       likes: editingVideo?.likes || 0,
       dislikes: editingVideo?.dislikes || 0,
       thumbnailGradient: editingVideo?.thumbnailGradient || 'from-slate-950 via-slate-900 to-slate-950',
-      isLive: editingVideo?.isLive || false
+      isLive: editingVideo?.isLive || false,
+      isPinned: editingVideo?.isPinned || false
     };
     try {
+      if (payload.isPinned) {
+        // Find other pinned videos and unpin them in Firestore
+        const otherPinned = videos.filter(v => v.isPinned && v.id !== vidId);
+        for (const op of otherPinned) {
+          await setDoc(doc(db, 'videos', op.id), { ...op, isPinned: false });
+        }
+      }
       await setDoc(doc(db, 'videos', vidId), payload);
       setIsAddVideoOpen(false);
       setEditingVideo(null);
@@ -1498,8 +1560,7 @@ export default function App() {
       try {
         await deleteDoc(doc(db, 'videos', id));
         if (activeVideoId === id) {
-          const rem = videos.filter(v => v.id !== id);
-          if (rem.length > 0) setActiveVideoId(rem[0].id);
+          setActiveVideoId('');
         }
         showToast(TRANSLATIONS[language].deleteVideoSuccess, 'success');
       } catch (err) {
@@ -1561,9 +1622,45 @@ export default function App() {
   // Extract youtube video ID for embedding
   const youtubeEmbedUrl = useMemo(() => {
     if (!activeVideo) return '';
-    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-    const match = activeVideo.url.match(regExp);
-    const videoId = (match && match[2].length === 11) ? match[2] : null;
+    let videoId: string | null = null;
+    const url = activeVideo.url.trim();
+
+    // 1. Check for youtube.com/live/VIDEO_ID or youtu.be/live/VIDEO_ID
+    const liveMatch = url.match(/(?:youtube\.com|youtu\.be)\/live\/([^#\&\?\/]+)/i);
+    if (liveMatch && liveMatch[1]) {
+      videoId = liveMatch[1];
+    }
+
+    // 2. Check for youtube.com/shorts/VIDEO_ID
+    if (!videoId) {
+      const shortsMatch = url.match(/(?:youtube\.com|youtu\.be)\/shorts\/([^#\&\?\/]+)/i);
+      if (shortsMatch && shortsMatch[1]) {
+        videoId = shortsMatch[1];
+      }
+    }
+
+    // 3. Standard patterns
+    if (!videoId) {
+      const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+      const match = url.match(regExp);
+      if (match && match[2] && match[2].length === 11) {
+        videoId = match[2];
+      }
+    }
+
+    // 4. Try parsing URL for relative share path
+    if (!videoId) {
+      try {
+        const parsed = new URL(url);
+        if (parsed.hostname.includes('youtu.be')) {
+          const path = parsed.pathname.substring(1);
+          if (path.length === 11) {
+            videoId = path;
+          }
+        }
+      } catch (e) {}
+    }
+
     return videoId ? `https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0` : '';
   }, [activeVideo]);
 
@@ -2390,7 +2487,10 @@ export default function App() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 justify-between">
-                          <p className="text-xs font-bold text-slate-200 truncate group-hover:text-white flex-1">{vid.title}</p>
+                          <p className="text-xs font-bold text-slate-200 truncate group-hover:text-white flex-1 flex items-center gap-1.5">
+                            {vid.isPinned && <Pin className="w-3 h-3 text-amber-500 fill-current flex-shrink-0 rotate-45" />}
+                            <span className="truncate">{vid.title}</span>
+                          </p>
                           {vid.isLive && (
                             <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-red-500/15 text-[8px] font-black text-red-400 border border-red-500/20 uppercase tracking-widest flex-shrink-0 animate-pulse">
                               {TRANSLATIONS[language].liveBadge}
@@ -3043,6 +3143,12 @@ export default function App() {
                                       LIVE
                                     </span>
                                   )}
+                                  {vid.isPinned && (
+                                    <span className="text-[8px] font-black text-amber-400 bg-amber-500/10 px-1 py-0.5 rounded border border-amber-500/20 uppercase flex items-center gap-1">
+                                      <Pin className="w-2.5 h-2.5 fill-current text-amber-500 rotate-45" />
+                                      {language === 'vi' ? 'GHIM' : 'PINNED'}
+                                    </span>
+                                  )}
                                 </div>
                                 <h5 className="text-xs font-bold text-slate-200 truncate mt-1">{vid.title}</h5>
                                 <div className="flex items-center gap-3 mt-1 text-[10px] text-slate-500 font-mono">
@@ -3055,6 +3161,32 @@ export default function App() {
                               </div>
                             </div>
                             <div className="flex items-center gap-2 flex-shrink-0">
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    const newPinnedState = !vid.isPinned;
+                                    if (newPinnedState) {
+                                      // Unpin others
+                                      const otherPinned = videos.filter(v => v.isPinned && v.id !== vid.id);
+                                      for (const op of otherPinned) {
+                                        await setDoc(doc(db, 'videos', op.id), { ...op, isPinned: false });
+                                      }
+                                    }
+                                    await setDoc(doc(db, 'videos', vid.id), { ...vid, isPinned: newPinnedState });
+                                    showToast(newPinnedState ? (language === 'vi' ? 'Đã ghim video!' : 'Video pinned!') : (language === 'vi' ? 'Đã bỏ ghim video!' : 'Video unpinned!'), 'success');
+                                  } catch (err) {
+                                    handleFirestoreError(err, OperationType.WRITE, `videos/${vid.id}`);
+                                  }
+                                }}
+                                className={`p-1.5 rounded border cursor-pointer transition-all ${
+                                  vid.isPinned 
+                                    ? 'bg-amber-950/40 text-amber-400 border-amber-500/30 hover:bg-amber-950/60' 
+                                    : 'bg-slate-900 text-slate-400 border-slate-850 hover:text-white'
+                                }`}
+                                title={vid.isPinned ? (language === 'vi' ? 'Bỏ ghim' : 'Unpin video') : (language === 'vi' ? 'Ghim video' : 'Pin video')}
+                              >
+                                <Pin className={`w-3.5 h-3.5 ${vid.isPinned ? 'fill-current text-amber-500 rotate-45' : ''}`} />
+                              </button>
                               <button
                                 onClick={() => { setEditingVideo(vid); setIsAddVideoOpen(true); }}
                                 className="p-1.5 rounded bg-slate-900 text-slate-400 hover:text-white border border-slate-850 cursor-pointer"
@@ -3344,6 +3476,20 @@ export default function App() {
                 <label htmlFor="is-live-checkbox" className="text-xs font-bold text-slate-300 cursor-pointer select-none flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse inline-block" />
                   <span>{TRANSLATIONS[language].setLiveStream}</span>
+                </label>
+              </div>
+
+              <div className="flex items-center gap-2 bg-slate-950/40 p-3 rounded-xl border border-slate-850">
+                <input
+                  id="is-pinned-checkbox"
+                  type="checkbox"
+                  checked={editingVideo?.isPinned || false}
+                  onChange={(e) => setEditingVideo({ ...editingVideo, isPinned: e.target.checked })}
+                  className="w-4 h-4 rounded border-slate-800 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-slate-900 bg-slate-950 cursor-pointer"
+                />
+                <label htmlFor="is-pinned-checkbox" className="text-xs font-bold text-slate-300 cursor-pointer select-none flex items-center gap-1.5">
+                  <Pin className="w-3.5 h-3.5 text-amber-500 fill-current rotate-45" />
+                  <span>{TRANSLATIONS[language].pinVideo}</span>
                 </label>
               </div>
 
