@@ -727,15 +727,25 @@ const TRANSLATIONS = {
 const parseCount = (val: string | undefined | null): number => {
   if (!val) return 0;
   const str = val.toString().trim().toUpperCase();
-  const match = str.match(/([\d.,]+)\s*(K|M|B)?/);
+  const match = str.match(/([\d.,]+)\s*(.*)/);
   if (!match) return 0;
+  
   const numStr = match[1].replace(/,/g, '');
   const num = parseFloat(numStr);
   if (isNaN(num)) return 0;
-  const unit = match[2];
-  if (unit === 'K') return num * 1000;
-  if (unit === 'M') return num * 1000000;
-  if (unit === 'B') return num * 1000000000;
+  
+  const unit = match[2].trim();
+  if (!unit) return num;
+
+  if (unit === 'K' || unit === 'N' || unit.startsWith('NG')) {
+    return num * 1000;
+  }
+  if (unit === 'M' || unit.startsWith('TR')) {
+    return num * 1000000;
+  }
+  if (unit === 'T' || unit.startsWith('TỶ') || unit.startsWith('TY') || unit === 'B') {
+    return num * 1000000000;
+  }
   return num;
 };
 
