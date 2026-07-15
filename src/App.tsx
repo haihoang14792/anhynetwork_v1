@@ -84,6 +84,7 @@ interface Channel {
   channelUrl?: string;
   subscribeUrl?: string;
   isHidden?: boolean;
+  joinedYear?: string;
 }
 
 interface VideoClip {
@@ -134,7 +135,8 @@ const DEFAULT_CHANNELS: Channel[] = [
     accent: 'indigo',
     colorClass: 'from-indigo-600 to-indigo-800',
     channelUrl: 'https://www.youtube.com/@v_tech_ai',
-    subscribeUrl: 'https://www.youtube.com/@v_tech_ai?sub_confirmation=1'
+    subscribeUrl: 'https://www.youtube.com/@v_tech_ai?sub_confirmation=1',
+    joinedYear: '2023'
   },
   {
     id: 'v-life',
@@ -148,7 +150,8 @@ const DEFAULT_CHANNELS: Channel[] = [
     accent: 'amber',
     colorClass: 'from-amber-500 to-amber-700',
     channelUrl: 'https://www.youtube.com/@v_life_travel',
-    subscribeUrl: 'https://www.youtube.com/@v_life_travel?sub_confirmation=1'
+    subscribeUrl: 'https://www.youtube.com/@v_life_travel?sub_confirmation=1',
+    joinedYear: '2024'
   },
   {
     id: 'v-finance',
@@ -162,7 +165,8 @@ const DEFAULT_CHANNELS: Channel[] = [
     accent: 'emerald',
     colorClass: 'from-emerald-500 to-emerald-700',
     channelUrl: 'https://www.youtube.com/@v_finance',
-    subscribeUrl: 'https://www.youtube.com/@v_finance?sub_confirmation=1'
+    subscribeUrl: 'https://www.youtube.com/@v_finance?sub_confirmation=1',
+    joinedYear: '2025'
   }
 ];
 
@@ -720,6 +724,34 @@ const TRANSLATIONS = {
   }
 };
 
+const parseCount = (val: string | undefined | null): number => {
+  if (!val) return 0;
+  const str = val.toString().trim().toUpperCase();
+  const match = str.match(/([\d.,]+)\s*(K|M|B)?/);
+  if (!match) return 0;
+  const numStr = match[1].replace(/,/g, '');
+  const num = parseFloat(numStr);
+  if (isNaN(num)) return 0;
+  const unit = match[2];
+  if (unit === 'K') return num * 1000;
+  if (unit === 'M') return num * 1000000;
+  if (unit === 'B') return num * 1000000000;
+  return num;
+};
+
+const formatCount = (num: number): string => {
+  if (num >= 1000000000) {
+    return (num / 1000000000).toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1') + 'B';
+  }
+  if (num >= 1000000) {
+    return (num / 1000000).toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1') + 'M';
+  }
+  if (num >= 1000) {
+    return (num / 1000).toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1') + 'K';
+  }
+  return num.toString();
+};
+
 export default function App() {
   const [language, setLanguage] = useState<'vi' | 'en' | 'pt' | 'ko' | 'ja'>('vi');
   const [user, setUser] = useState<any>(null);
@@ -736,7 +768,10 @@ export default function App() {
   
   // Interactive Filters
   const [activeChannelId, setActiveChannelId] = useState<string>('all');
-  const [activeVideoId, setActiveVideoId] = useState<string>('vid-1');
+  const [activeVideoId, setActiveVideoId] = useState<string>(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('v') || 'vid-1';
+  });
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   // Sidebar sorting and pagination
@@ -1014,6 +1049,37 @@ export default function App() {
     return channels.filter(ch => !ch.isHidden || (userRole === 'admin' || userRole === 'editor'));
   }, [channels, userRole]);
 
+  const dynamicStats = useMemo(() => {
+    let totalSubs = 0;
+    let totalViews = 0;
+    const years: number[] = [];
+    
+    channels.forEach(ch => {
+      // Sum only visible (or non-hidden) channels, or all? Let's sum all channels in user's ecosystem
+      totalSubs += parseCount(ch.subscribers);
+      totalViews += parseCount(ch.views);
+      
+      if (ch.joinedYear) {
+        const y = parseInt(ch.joinedYear);
+        if (!isNaN(y)) years.push(y);
+      } else {
+        if (ch.id === 'v-tech') years.push(2023);
+        else if (ch.id === 'v-life') years.push(2024);
+        else if (ch.id === 'v-finance') years.push(2025);
+      }
+    });
+
+    const minYear = years.length > 0 ? Math.min(...years) : 2023;
+    const currentYear = new Date().getFullYear();
+    const activeSinceStr = `${minYear} - ${currentYear}`;
+
+    return {
+      subscribers: formatCount(totalSubs),
+      views: formatCount(totalViews),
+      activeSince: activeSinceStr
+    };
+  }, [channels]);
+
   // Admin Video Workspace memoized states
   const filteredAdminVideos = useMemo(() => {
     let result = [...videos];
@@ -1069,15 +1135,7 @@ export default function App() {
     return comments.filter(c => c.videoId === activeVideo.id);
   }, [comments, activeVideo]);
 
-  // Synchronize URL query parameter 'v' with activeVideoId
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const videoParam = params.get('v');
-    if (videoParam && videoParam !== activeVideoId && videos.some(v => v.id === videoParam)) {
-      setActiveVideoId(videoParam);
-    }
-  }, [videos]);
-
+  // Synchronize URL query parameter 'v' with browser history
   useEffect(() => {
     if (activeVideoId) {
       const url = new URL(window.location.href);
@@ -1086,18 +1144,75 @@ export default function App() {
     }
   }, [activeVideoId]);
 
+  // Handle browser back/forward buttons (e.g. popstate events)
+  useEffect(() => {
+    const handlePopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      const videoParam = params.get('v');
+      if (videoParam) {
+        setActiveVideoId(videoParam);
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   const getShareUrl = (videoId: string) => {
-    const url = new URL(window.location.origin + window.location.pathname);
+    let origin = window.location.origin;
+    if (origin.includes('localhost') || origin.includes('127.0.0.1') || origin.includes('::1')) {
+      origin = 'https://ais-dev-yoshrezulybjpelboqtj6v-381733775562.asia-east1.run.app';
+    }
+    
+    let pathname = window.location.pathname;
+    if (pathname.endsWith('/index.html')) {
+      pathname = pathname.substring(0, pathname.length - 10);
+    }
+    if (!pathname.endsWith('/')) {
+      pathname += '/';
+    }
+    
+    const url = new URL(origin + pathname);
     url.searchParams.set('v', videoId);
     return url.toString();
   };
 
   const handleCopyLink = (videoId: string) => {
     const url = getShareUrl(videoId);
-    navigator.clipboard.writeText(url);
-    setCopied(true);
-    showToast(TRANSLATIONS[language].copied, 'success');
-    setTimeout(() => setCopied(false), 2000);
+    
+    const fallbackCopy = (text: string) => {
+      const textArea = document.createElement("textarea");
+      textArea.value = text;
+      textArea.style.top = "0";
+      textArea.style.left = "0";
+      textArea.style.position = "fixed";
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      try {
+        document.execCommand('copy');
+        setCopied(true);
+        showToast(TRANSLATIONS[language].copied, 'success');
+        setTimeout(() => setCopied(false), 2000);
+      } catch (err) {
+        console.error('Fallback copy failed', err);
+        showToast('Failed to copy', 'error');
+      }
+      document.body.removeChild(textArea);
+    };
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url)
+        .then(() => {
+          setCopied(true);
+          showToast(TRANSLATIONS[language].copied, 'success');
+          setTimeout(() => setCopied(false), 2000);
+        })
+        .catch(() => {
+          fallbackCopy(url);
+        });
+    } else {
+      fallbackCopy(url);
+    }
   };
 
   // Auth Operations
@@ -1304,7 +1419,8 @@ export default function App() {
       colorClass: editingChannel?.colorClass || 'from-indigo-600 to-indigo-800',
       channelUrl: editingChannel?.channelUrl || '',
       subscribeUrl: editingChannel?.subscribeUrl || '',
-      isHidden: editingChannel?.isHidden || false
+      isHidden: editingChannel?.isHidden || false,
+      joinedYear: editingChannel?.joinedYear || '2026'
     };
     try {
       await setDoc(doc(db, 'channels', chId), payload);
@@ -1547,7 +1663,11 @@ export default function App() {
             {TRANSLATIONS[language].heroTitle}
           </h2>
           <p className="text-slate-400 text-sm md:text-base max-w-2xl mx-auto leading-relaxed">
-            {TRANSLATIONS[language].heroSub}
+            {TRANSLATIONS[language].heroSub
+              .replace(/2\.47M/g, dynamicStats.subscribers)
+              .replace(/2\.47 triệu/g, `${dynamicStats.subscribers} ${language === 'vi' ? 'triệu' : ''}`)
+              .replace(/247만/g, dynamicStats.subscribers)
+            }
           </p>
         </div>
       </section>
@@ -2176,15 +2296,21 @@ export default function App() {
               <div className="flex flex-col gap-2.5 font-mono text-xs">
                 <div className="flex justify-between items-center py-2 border-b border-slate-900">
                   <span className="text-slate-500">{TRANSLATIONS[language].totalSubs}</span>
-                  <span className="text-slate-200 font-extrabold text-sm">2.47M subscribers</span>
+                  <span className="text-slate-200 font-extrabold text-sm">
+                    {dynamicStats.subscribers} {TRANSLATIONS[language].subscribers?.toLowerCase() || 'subscribers'}
+                  </span>
                 </div>
                 <div className="flex justify-between items-center py-2 border-b border-slate-900">
                   <span className="text-slate-500">{TRANSLATIONS[language].totalViews}</span>
-                  <span className="text-slate-200 font-extrabold text-sm">63.3M views</span>
+                  <span className="text-slate-200 font-extrabold text-sm">
+                    {dynamicStats.views} {TRANSLATIONS[language].views?.toLowerCase() || 'views'}
+                  </span>
                 </div>
                 <div className="flex justify-between items-center py-2">
                   <span className="text-slate-500">{TRANSLATIONS[language].activeSince}</span>
-                  <span className="text-slate-200 font-extrabold">2023 - 2026</span>
+                  <span className="text-slate-200 font-extrabold">
+                    {dynamicStats.activeSince}
+                  </span>
                 </div>
               </div>
             </div>
@@ -2771,7 +2897,21 @@ export default function App() {
                           </div>
                         </div>
                         
-                        <div className="flex items-center gap-3 w-full sm:w-auto justify-end border-t border-slate-900 sm:border-transparent pt-3 sm:pt-0">
+                        <div className="flex items-center gap-3 w-full sm:w-auto justify-end border-t border-slate-900 sm:border-transparent pt-3 sm:pt-0 flex-wrap">
+                          {/* Visit Channel Button */}
+                          {ch.channelUrl && (
+                            <a
+                              href={ch.channelUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-slate-700 text-slate-300 font-bold text-[10px] transition-all uppercase cursor-pointer"
+                              title={language === 'vi' ? 'Xem Kênh YouTube' : 'Visit YouTube Channel'}
+                            >
+                              <ExternalLink className="w-3.5 h-3.5 text-indigo-400" />
+                              <span>{TRANSLATIONS[language].viewChannel}</span>
+                            </a>
+                          )}
+
                           {/* Visibility Toggle Badge */}
                           <button
                             onClick={async () => {
@@ -3011,7 +3151,7 @@ export default function App() {
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-4 gap-3">
                 <div>
                   <label className="block text-[10px] uppercase font-mono tracking-wider text-slate-500 mb-1">Subs Count</label>
                   <input
@@ -3036,6 +3176,16 @@ export default function App() {
                     type="text"
                     value={editingChannel?.growth || ''}
                     onChange={(e) => setEditingChannel({ ...editingChannel, growth: e.target.value })}
+                    className="w-full bg-slate-950 border border-slate-850 rounded-xl px-3 py-2 text-xs text-white outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] uppercase font-mono tracking-wider text-slate-500 mb-1">Start Year</label>
+                  <input
+                    type="text"
+                    value={editingChannel?.joinedYear || ''}
+                    placeholder="2023"
+                    onChange={(e) => setEditingChannel({ ...editingChannel, joinedYear: e.target.value })}
                     className="w-full bg-slate-950 border border-slate-850 rounded-xl px-3 py-2 text-xs text-white outline-none"
                   />
                 </div>
